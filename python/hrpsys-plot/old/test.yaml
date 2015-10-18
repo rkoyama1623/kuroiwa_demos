@@ -1,0 +1,63 @@
+limbs:
+  - rleg: 6
+  - lleg: 6
+  - rarm: 8
+  - larm: 8
+  - torso: 3
+  - head: 2
+
+target_limbs:
+  - rleg : [0, 5]
+  - lleg : [6, 11]
+
+plots:
+  joint_angle:
+    - sh_qOut
+    - ic_q
+    - abc_q
+    - st_q
+    - RobotHardware0_q
+  joint_velocity:
+    - RobotHardware0_dq
+  torque:
+    - RobotHardware0_tau
+  # imu:
+  #   - sh_baseRpyOut
+  #   - st_actBaseRpy
+  #   - st_currentBaseRpy
+  #   - kf_rpy
+
+  # watt:
+  #   - RobotHardware0_dq
+  #   - RobotHardware0_tau
+  # tracking:
+  #   - st_q
+  #   - RobotHardware0_q
+  #   - RobotHardware0_servoState
+  # right_foot_force:
+  #   - sh_rfsensorOut
+  #   - st_allRefWrench
+  #   - RobotHardware0_rfsensor
+  #   - rmfo_off_rfsensor
+  # right_foot_force:
+  #   - sh_rfsensorOut
+  #   - st_allRefWrench
+  #   - RobotHardware0_rfsensor
+  #   - rmfo_off_rfsensor
+  # left_foot_force:
+  #   - sh_lfsensorOut
+  #   - st_allRefWrench
+  #   - RobotHardware0_lfsensor
+  #   - rmfo_off_lfsensor
+  # right_hand_force:
+  #   - sh_rhsensorOut
+  #   - st_allRefWrench
+  #   - RobotHardware0_rhsensor
+  #   - rmfo_off_rhsensor
+  # left_hand_force:
+  #   - sh_lhsensorOut
+  #   - st_allRefWrench
+  #   - RobotHardware0_lhsensor
+  #   - rmfo_off_lhsensor
+  # others:
+  #   - RobotHardware0_servoState
