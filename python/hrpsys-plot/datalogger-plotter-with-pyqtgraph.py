@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 
-import pyqtgraph
-import csv, argparse, numpy, math, time, struct, yaml
+import csv, argparse, numpy, math, time, struct, yaml, sys
+
+try:
+    import pyqtgraph
+except:
+    print "please install pyqtgraph. see http://www.pyqtgraph.org/"
+    sys.exit(1)
 
 class DataloggerLogParserController:
     def __init__(self, fname, yname, title):
