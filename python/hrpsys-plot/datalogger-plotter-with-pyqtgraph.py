@@ -79,6 +79,20 @@ class DataloggerLogParserController:
                         cur_plot_item.addLegend(offset=(0, 0))
                         if cur_row == self.row_num -1:
                             cur_plot_item.setLabel("bottom", text="time", units="s")
+                        if cur_col-cf[0] == 0:
+                            tmp_units = None
+                            if plot[0] == "12V" or plot[0] == "80V":
+                                tmp_units = "V"
+                            elif plot[0] == "current":
+                                tmp_units = "A"
+                            elif plot[0] == "temperature" or plot[0] == "joint_angle" or plot[0] == "attitude" or plot[0] == "tracking":
+                                tmp_units = "deg"
+                            elif plot[0] == "joint_velocity":
+                                tmp_units = "deg/s"
+                            elif plot[0] == "watt":
+                                tmp_units = "W"
+                            cur_plot_item.setLabel("left", text="", units=tmp_units)
+                            # cur_plot_item.enableAutoSIPrefix(False)
                         if cl == 'RobotHardware0_servoState':
                             if plot[0] == "12V":
                                 cur_plot_item.plot(cur_tm, cur_data[:, (12+1) * cur_col + (9+1)][::mabiki], pen=pyqtgraph.mkPen('r', width=2), name='12V')
