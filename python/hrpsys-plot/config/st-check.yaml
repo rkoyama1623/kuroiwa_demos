@@ -1,0 +1,11 @@
+"right_foot_force":
+  "log": ['rmfo_off_rfsensor']
+  "field": [[0,1,2,3,4,5]]
+
+"left_foot_force":
+  "log": ['rmfo_off_lfsensor']
+  "field": [[0,1,2,3,4,5]]
+
+"comp":
+  "log": ['st_allEEComp']
+  "field": [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]]
