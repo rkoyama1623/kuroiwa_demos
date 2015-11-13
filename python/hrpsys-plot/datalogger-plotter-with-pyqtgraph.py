@@ -122,12 +122,18 @@ class DataloggerLogParserController:
                                 self.items[cur_row][0].plot(cur_tm, cur_data[:, cur_col][::mabiki], pen=pyqtgraph.mkPen(color_list[cur_col%3], width=3-cur_col%3), name=['x', 'y', 'z'][cur_col%3])
                             elif cl == 'RobotHardware0_gyrometer':
                                 self.items[cur_row][1].plot(cur_tm, cur_data[:, cur_col][::mabiki], pen=pyqtgraph.mkPen(color_list[cur_col%3], width=3-cur_col%3), name=['x', 'y', 'z'][cur_col%3])
+                        elif plot[0] == "comp":
+                            cur_plot_item.plot(cur_tm, cur_data[:, cur_col][::mabiki], pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl)
+                            if cur_col % 6 < 3: # position
+                                cur_plot_item.setYRange(-0.25, +0.025) # compensation limit
+                            else: # rotation
+                                cur_plot_item.setYRange(math.radians(-10), math.radians(+10)) # compensation limit
                         else:
                             cur_plot_item.plot(cur_tm, cur_data[:, cur_col][::mabiki], pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl)
                 # calculate y range of each rows using autofit function and then link y range each row
                 y_min = min([p.viewRange()[1][0] for p in self.items[cur_row]])
                 y_max = max([p.viewRange()[1][1] for p in self.items[cur_row]])
-                if plot[0] != "joint_angle" and plot[0].find("_force") == -1 and plot[0] != "imu":
+                if plot[0] != "joint_angle" and plot[0].find("_force") == -1 and plot[0] != "imu" and plot[0] != "comp":
                     self.items[cur_row][0].setYRange(y_min, y_max)
                     for p in self.items[cur_row]:
                         p.setYLink('r'+str(cur_row)+'c0')
