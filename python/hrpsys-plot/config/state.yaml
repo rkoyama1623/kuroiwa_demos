@@ -1,0 +1,19 @@
+# "state":
+#   "log": ['st_originActCog', 'st_originRefCog', 'st_originActCogVel', 'st_originRefCogVel', 'st_originActZmp', 'st_originRefZmp', 'st_originNewZmp']
+#   "field": [[0]]
+
+"cog":
+  "log": ['st_originActCog', 'st_originRefCog']
+  "field": [[0], [1]]
+"cogvel":
+  "log": ['st_originActCogVel', 'st_originRefCogVel']
+  "field": [[0], [1]]
+"zmp":
+  "log": ['st_originActZmp', 'st_originRefZmp', 'st_originNewZmp']
+  "field": [[0], [1]]
+"comp":
+  "log": ['st_allEEComp']
+  "field": [[3], [9]]
+"contactStates":
+  "log": ['abc_contactStates', 'abc_controlSwingSupportTime']
+  "field": [[0], [1]]
