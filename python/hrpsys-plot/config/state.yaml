@@ -1,7 +1,4 @@
-# "state":
-#   "log": ['st_originActCog', 'st_originRefCog', 'st_originActCogVel', 'st_originRefCogVel', 'st_originActZmp', 'st_originRefZmp', 'st_originNewZmp']
-#   "field": [[0]]
-
+# test 1
 "cog":
   "log": ['st_originActCog', 'st_originRefCog']
   "field": [[0], [1]]
@@ -11,9 +8,26 @@
 "zmp":
   "log": ['st_originActZmp', 'st_originRefZmp', 'st_originNewZmp']
   "field": [[0], [1]]
-"comp":
-  "log": ['st_allEEComp']
-  "field": [[3], [9]]
-"contactStates":
-  "log": ['abc_contactStates', 'abc_controlSwingSupportTime']
-  "field": [[0], [1]]
+
+# test 2
+# "comp":
+#   "log": ['st_allEEComp']
+#   "field": [[2], [3], [8], [9]]
+# "contactStates":
+#   "log": ['abc_contactStates', 'abc_controlSwingSupportTime']
+#   "field": [[0], [1]]
+
+# test 3
+# "right_foot_force":
+#   "log": ['rmfo_off_rfsensor', 'st_allRefWrench']
+#   "field": [[0],[1],[2],[3],[4],[5]]
+
+# test 4
+# "left_foot_force":
+#   "log": ['rmfo_off_lfsensor']
+#   "field": [[0],[1],[2],[3],[4],[5]]
+
+# test 5
+# "left_foot_force":
+#   "log": ['st_allRefWrench']
+#   "field": [[6],[7],[8],[9],[10],[11]]
