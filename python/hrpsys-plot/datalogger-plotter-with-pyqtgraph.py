@@ -125,7 +125,7 @@ class DataloggerLogParserController:
                         elif plot[0] == "comp":
                             cur_plot_item.plot(cur_tm, cur_data[:, cur_col][::mabiki], pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl)
                             if cur_col % 6 < 3: # position
-                                cur_plot_item.setYRange(-0.25, +0.025) # compensation limit
+                                cur_plot_item.setYRange(-0.025, +0.025) # compensation limit
                             else: # rotation
                                 cur_plot_item.setYRange(math.radians(-10), math.radians(+10)) # compensation limit
                         else:
