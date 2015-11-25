@@ -94,17 +94,18 @@ class DataloggerLogParserController:
                             cur_plot_item.setLabel("left", text="", units=tmp_units)
                             # cur_plot_item.enableAutoSIPrefix(False)
                         if cl == 'RobotHardware0_servoState':
+                            urata_len = 13
                             if plot[0] == "12V":
-                                cur_plot_item.plot(cur_tm, cur_data[:, (12+1) * cur_col + (9+1)][::mabiki], pen=pyqtgraph.mkPen('r', width=2), name='12V')
+                                cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (9+1)][::mabiki], pen=pyqtgraph.mkPen('r', width=2), name='12V')
                             elif plot[0] == "80V":
-                                cur_plot_item.plot(cur_tm, cur_data[:, (12+1) * cur_col + (2+1)][::mabiki], pen=pyqtgraph.mkPen('g', width=2), name='80V')
+                                cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (2+1)][::mabiki], pen=pyqtgraph.mkPen('g', width=2), name='80V')
                             elif plot[0] == "current":
-                                cur_plot_item.plot(cur_tm, cur_data[:, (12+1) * cur_col + (1+1)][::mabiki], pen=pyqtgraph.mkPen('b', width=2), name='current')
+                                cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (1+1)][::mabiki], pen=pyqtgraph.mkPen('b', width=2), name='current')
                             elif plot[0] == "temperature":
-                                cur_plot_item.plot(cur_tm, cur_data[:, (12+1) * cur_col + (0+1)][::mabiki], pen=pyqtgraph.mkPen('r', width=2), name='motor_temp')
-                                cur_plot_item.plot(cur_tm, cur_data[:, (12+1) * cur_col + (7+1)][::mabiki], pen=pyqtgraph.mkPen('g', width=1), name='motor_outer_temp')
+                                cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (0+1)][::mabiki], pen=pyqtgraph.mkPen('r', width=2), name='motor_temp')
+                                cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (7+1)][::mabiki], pen=pyqtgraph.mkPen('g', width=1), name='motor_outer_temp')
                             elif plot[0] == "tracking":
-                                cur_plot_item.plot(cur_tm, [math.degrees(x) for x in cur_data[:, (12+1) * cur_col + (6+1)][::mabiki]], pen=pyqtgraph.mkPen('g', width=2), name='abs - enc')
+                                cur_plot_item.plot(cur_tm, [math.degrees(x) for x in cur_data[:, (urata_len+1) * cur_col + (6+1)][::mabiki]], pen=pyqtgraph.mkPen('g', width=2), name='abs - enc')
                         elif plot[0] == "tracking":
                             if cl == "RobotHardware0_q":
                                 cur_plot_item.plot(cur_tm, [math.degrees(x) for x in numpy.array(self.dataListDict['st_q'][1:])[:, cur_col][::mabiki] - cur_data[:, cur_col][::mabiki]], pen=pyqtgraph.mkPen('r', width=2), name="st_q - rh_q")
