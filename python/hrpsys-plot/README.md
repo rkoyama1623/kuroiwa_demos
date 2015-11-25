@@ -12,16 +12,13 @@ exit
 
 ##### Trim
 
-After you plot all the data, you can see the plot during 0 ~ T[s].
-So, if you want to trim a[s] ~ b[s],
+After you plot all the data, you might think the data are too long and it takes very long time to load them.
+Then, you can trim them as follows.
+
+save the following commands as ~/.gnome2/nautilus-scripts/trim.sh and ``chmod +x ~/.gnome2/nautilus-scripts/trim.sh`` and then ``nautilus -q``
 
 ```bash
-a=5 \
-b=10 \
-T=1000 \
-num=`wc -l \`ls | grep st_originRefCogVel\` | cut -d" " -f1` \
-start=`expr $num / $T * \( $T - a \)` \
-len=`expr $num / $T * \( $b - $a \)` \
-mkdir /tmp/ahoaho/ \
-for i in *; do tail $i -n $start | head -n $len > /tmp/ahoaho/$i; done
+#!/bin/bash
+gnome-terminal -t "aho" -x $SHELL -ic '$HOME/myrepo/kuroiwa_demos/python/hrpsys-plot/datalogger-trimmer.py -f $NAUTILUS_SCRIPT_SELECTED_FILE_PATHS --min $(zenity --entry --text="minimum time[s]") --max $(zenity --entry --text="maximum time[s]")'
+exit
 ```
