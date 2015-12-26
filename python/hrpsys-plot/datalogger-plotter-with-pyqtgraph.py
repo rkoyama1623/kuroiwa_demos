@@ -223,14 +223,6 @@ class CustomedPlotItem():
         if self.post_processes != None:
             exec(self.post_processes[i])
 
-def plot():
-    global main_window
-    main_window = MainWindow("/home/k-kojima/Downloads/skate-log_JAXON_20151216220552/skate-log_JAXON_20151216220552", "/home/k-kojima/git/kuroiwa_demos/python/hrpsys-plot/config/robot/jaxon/check.yaml", "test-title")
-    # main_window = MainWindow("/home/k-kojima/Downloads/skate-log_JAXON_20151216220552/skate-log_JAXON_20151216220552", "/home/k-kojima/git/kuroiwa_demos/python/hrpsys-plot/config/robot/jaxon/jaxon-all.yaml", "test-title")
-    main_window.log_parser.readData(0,0)
-    main_window.showMaximized()
-    main_window.log_parser.plotData(1)
-
 if __name__  == '__main__':
     # time
     start_time = time.time()
