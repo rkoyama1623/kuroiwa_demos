@@ -8,6 +8,16 @@ except:
     print "please install pyqtgraph. see http://www.pyqtgraph.org/"
     sys.exit(1)
 
+def makeProxy(max_height=15, max_width=15):
+    prox = pyqtgraph.Qt.QtGui.QGraphicsProxyWidget()
+    btn = pyqtgraph.Qt.QtGui.QPushButton("+")
+    btn.setCheckable(True)
+    btn.setChecked(True)
+    btn.setMaximumHeight(max_height)
+    btn.setMaximumWidth(max_width)
+    prox.setWidget(btn)
+    return prox
+
 class MainWindow(pyqtgraph.QtGui.QWidget):
     def __init__(self, fname, yname, title, parent=None):
         self.app = pyqtgraph.Qt.QtGui.QApplication([])
@@ -18,72 +28,63 @@ class MainWindow(pyqtgraph.QtGui.QWidget):
         self.fname = fname
         with open(yname, "r") as f:
             self.plot_dic = yaml.load(f)
-        self.main_layout = pyqtgraph.QtGui.QGridLayout()
-        self.setLayout(self.main_layout)
+
+        self.view = pyqtgraph.GraphicsLayoutWidget(border='g')
+        self.view.setBackground('w')
+        self.view.ci.setSpacing(0.)
+        self.view.ci.setContentsMargins(0.,0.,0.,0.)
+
         if title == '':
             self.setWindowTitle(fname.split('/')[-1])
         else:
             self.setWindowTitle(title)
-        self.dummy_graph_widgets = []# for axis link
 
         for r in range(parser.row_num):
-            self.dummy_graph_widgets.append(pyqtgraph.GraphicsLayoutWidget())
-            self.dummy_graph_widgets[r].addPlot(name='r'+str(r))
+            row_layout = self.view.addLayout(r,0)
+            row_layout.setSpacing(0.)
+            row_layout.setContentsMargins(0.,0.,0.,0.)
 
-            row_layout = pyqtgraph.QtGui.QGridLayout()
-            self.main_layout.addLayout(row_layout,r,1)
-
-            button = pyqtgraph.QtGui.QPushButton("+")
-            button.setCheckable(True)
-            button.setChecked(True)
-            button.setMaximumHeight(25)
-            button.setMaximumWidth(25)
-            button.clicked.connect(functools.partial(self.switchRowDisplayCustomed,row=r))
-            self.main_layout.addWidget(button,r,0)
+            proxy = makeProxy(max_height=25, max_width=25)
+            proxy.widget().clicked.connect(functools.partial(self.switchRowDisplayCustomed, row=r))
+            row_layout.addItem(proxy,row=0,col=0)
 
             parser.items.append([])
             for c in range(parser.col_num):
-                button = pyqtgraph.QtGui.QPushButton("+")
-                button.setCheckable(True)
-                button.setChecked(True)
-                button.setMaximumHeight(15)
-                button.setMaximumWidth(15)
-                button.clicked.connect(functools.partial(self.switchGraphDisplay,row=r,col=c))
-                row_layout.addWidget(button,0,c)
+                cell_layout = row_layout.addLayout(row=0, col=c+1)
+                cell_layout.setSpacing(0.)
+                cell_layout.setContentsMargins(0.,0.,0.,0.)
 
-                graph_widget = pyqtgraph.GraphicsLayoutWidget()
-                graph_widget.setBackground('w')
-                row_layout.addWidget(graph_widget,1,c)
-                plot_item = graph_widget.addPlot(row=None, col=None)
+                proxy = makeProxy()
+                proxy.widget().clicked.connect(functools.partial(self.switchGraphDisplay, row=r, col=c))
+                cell_layout.addItem(proxy, row=0, col=0)
+
+                plot_item = cell_layout.addPlot(row=1,col=0,name='r'+str(r)+'c'+str(c))
+                plot_item.setXLink('r0c0')
                 customed_plot_item = CustomedPlotItem(plot_item)
-                plot_item.setXLink('r0')
                 parser.items[r].append(customed_plot_item)
 
     def switchRowDisplayCustomed(self, row):
-        func = self.main_layout.itemAtPosition(row,0).widget().isChecked() and self.addGraph or self.removeGraph
-        for col in range(0,self.main_layout.itemAtPosition(row,1).columnCount()):
-            if self.main_layout.itemAtPosition(row,1).itemAtPosition(0,col).widget().isChecked():
+        func = self.view.ci.getItem(row,0).getItem(0,0).widget().isChecked() and self.addGraph or self.removeGraph
+        for col in range(self.view.ci.getItem(row,0).currentCol-1):
+            if self.view.ci.getItem(row,0).getItem(0,col+1).getItem(0,0).widget().isChecked():
                 func(row, col)
 
     def switchRowDisplay(self, row):
-        for col in range(0,self.main_layout.itemAtPosition(row,1).columnCount()):
+        for col in range(0,self.view.ci.getItem(row,0).columnCount()):
             self.switchGraphDisplay(row,col)
 
     def switchGraphDisplay(self, row, col):
-        if self.main_layout.itemAtPosition(row,1).itemAtPosition(0,col).widget().isChecked():
+        if self.view.ci.getItem(row,0).getItem(0,col+1).getItem(0,0).widget().isChecked():
             self.addGraph(row, col)
         else:
             self.removeGraph(row, col)
 
     def removeGraph(self, row, col):
-        self.main_layout.itemAtPosition(row,1).itemAtPosition(1,col).widget().deleteLater()
+        self.view.ci.getItem(row,0).getItem(0,col+1).getItem(1,0).deleteLater()
 
     def addGraph(self, row, col):
-        gwidget = pyqtgraph.GraphicsLayoutWidget()
-        gwidget.setBackground('w')
-        self.log_parser.items[row][col].plot_item = gwidget.addPlot()
-        self.log_parser.items[row][col].plot_item.setXLink('r0')
-        self.main_layout.itemAtPosition(row,1).addWidget(gwidget,1,col)
+        self.log_parser.items[row][col].plot_item = self.view.ci.getItem(row,0).getItem(0,col+1).addPlot(row=1,col=0)
+        self.log_parser.items[row][col].plot_item.setXLink('r0c0')
         self.log_parser.items[row][col].plotAllData(1)
 
 class DataloggerLogParserController:
