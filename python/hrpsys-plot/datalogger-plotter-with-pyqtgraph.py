@@ -8,18 +8,18 @@ except:
     print "please install pyqtgraph. see http://www.pyqtgraph.org/"
     sys.exit(1)
 
-def makeProxy(max_height=15, max_width=15):
+def makeProxy(max_height=15, max_width=15, isChecked=True):
     prox = pyqtgraph.Qt.QtGui.QGraphicsProxyWidget()
     btn = pyqtgraph.Qt.QtGui.QPushButton("+")
     btn.setCheckable(True)
-    btn.setChecked(True)
+    btn.setChecked(isChecked)
     btn.setMaximumHeight(max_height)
     btn.setMaximumWidth(max_width)
     prox.setWidget(btn)
     return prox
 
 class MainWindow(pyqtgraph.QtGui.QWidget):
-    def __init__(self, fname, yname, title, parent=None):
+    def __init__(self, fname, yname, title, display_button, parent=None):
         self.app = pyqtgraph.Qt.QtGui.QApplication([])
         super(MainWindow, self).__init__(parent)
 
@@ -29,44 +29,102 @@ class MainWindow(pyqtgraph.QtGui.QWidget):
         with open(yname, "r") as f:
             self.plot_dic = yaml.load(f)
 
-        self.view = pyqtgraph.GraphicsLayoutWidget(border='g')
-        self.view.setBackground('w')
-        self.view.ci.setSpacing(0.)
-        self.view.ci.setContentsMargins(0.,0.,0.,0.)
+        self.main_layout = pyqtgraph.QtGui.QVBoxLayout()
+        self.main_layout.setContentsMargins(0,0,0,0)
+        self.setLayout(self.main_layout)
+
+        self.menu_dict = {}
+        self.menubar = pyqtgraph.QtGui.QMenuBar(self)
+        self.menu_dict["file"] = self.menubar.addMenu('File')
+        self.menu_dict["view"] = self.menubar.addMenu('View')
+        self.menu_dict["setting"] = self.menubar.addMenu('Setting')
+        action = self.menu_dict["view"].addAction('hide button',self.switchProxyDisplay)
+        action.setCheckable(True)
+        if not display_button: action.setChecked(True)
+
+        self.graph_widget = pyqtgraph.GraphicsLayoutWidget()
+        self.graph_widget.setBackground('w')
+        self.graph_widget.ci.setSpacing(0)
+        self.graph_widget.ci.setContentsMargins(0,0,0,0)
+        self.main_layout.addWidget(self.graph_widget)
 
         if title == '':
             self.setWindowTitle(fname.split('/')[-1])
         else:
             self.setWindowTitle(title)
 
-        for r in range(parser.row_num):
-            row_layout = self.view.addLayout(r,0)
-            row_layout.setSpacing(0.)
-            row_layout.setContentsMargins(0.,0.,0.,0.)
+        # for xlink sync
+        self.dummy_widget = pyqtgraph.GraphicsLayoutWidget()
+        self.dummy_plot = self.dummy_widget.addPlot()
+        self.dummy_plot.plot(numpy.random.normal(size=1000),numpy.random.normal(size=1000))
+        self.dummy_widget.showMinimized()
+        # self.closeEvent = self.dummy_widget.destroy
 
-            proxy = makeProxy(max_height=25, max_width=25)
-            proxy.widget().clicked.connect(functools.partial(self.switchRowDisplayCustomed, row=r))
-            row_layout.addItem(proxy,row=0,col=0)
+        for r in range(parser.row_num):
+            row_layout = self.graph_widget.addLayout(r,0)
+            row_layout.setSpacing(0)
+            row_layout.setContentsMargins(0,0,0,0)
+
+            if display_button:
+                proxy = makeProxy(max_height=25, max_width=25)
+                proxy.widget().clicked.connect(functools.partial(self.switchRowDisplayCustomed, row=r))
+                row_layout.addItem(proxy,row=0,col=0)
 
             parser.items.append([])
             for c in range(parser.col_num):
                 cell_layout = row_layout.addLayout(row=0, col=c+1)
-                cell_layout.setSpacing(0.)
-                cell_layout.setContentsMargins(0.,0.,0.,0.)
+                cell_layout.setSpacing(0)
+                cell_layout.setContentsMargins(0,0,0,0)
 
-                proxy = makeProxy()
-                proxy.widget().clicked.connect(functools.partial(self.switchGraphDisplay, row=r, col=c))
-                cell_layout.addItem(proxy, row=0, col=0)
+                if display_button:
+                    proxy = makeProxy()
+                    proxy.widget().clicked.connect(functools.partial(self.switchGraphDisplay, row=r, col=c))
+                    cell_layout.addItem(proxy, row=0, col=0)
 
-                plot_item = cell_layout.addPlot(row=1,col=0,name='r'+str(r)+'c'+str(c))
-                plot_item.setXLink('r0c0')
+                plot_item = cell_layout.addPlot(row=1,col=0)
                 customed_plot_item = CustomedPlotItem(plot_item)
                 parser.items[r].append(customed_plot_item)
+                plot_item.setXLink(self.dummy_plot)
+
+    def closeEvent(self, event):
+        self.dummy_widget.destroy()
+        self.destroy()
+
+    def switchProxyDisplay(self):
+        # func = self.menu_dict["view"].actionAt(pyqtgraph.QtCore.QPoint(0,1)).isChecked() and self.removeRowProxy or self.addRowProxy
+        func = self.menu_dict["view"].actions()[0].isChecked() and self.removeRowProxy or self.addRowProxy
+        for row in range(self.log_parser.row_num):
+            func(row)
+
+    def removeRowProxy(self, row):
+        # self.graph_widget.getItem(row,0).getItem(0,0).widget().deleteLater()
+        for col in range(self.graph_widget.getItem(row,0).currentCol-1):
+            self.removeProxy(row, col)
+
+    def addRowProxy(self, row):
+        proxy = makeProxy(max_height=25, max_width=25)
+        proxy.widget().clicked.connect(functools.partial(self.switchRowDisplayCustomed, row))
+        # self.graph_widget.getItem(row,0).addItem(proxy, row=0, col=0)
+        for col in range(self.graph_widget.getItem(row,0).currentCol-1):
+            self.addProxy(row, col)
+
+    def removeProxy(self, row, col):
+        self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(0,0).deleteLater()
+
+    def addProxy(self, row, col):
+        isChecked = True
+        try:
+            self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(1,0).size()
+        except RuntimeError:
+            isChecked = False
+        proxy = makeProxy(isChecked=isChecked)
+        proxy.widget().clicked.connect(functools.partial(self.switchGraphDisplay, row=row, col=col))
+        self.graph_widget.getItem(row,0).getItem(0,col+1).addItem(proxy, row=0, col=0)
 
     def switchRowDisplayCustomed(self, row):
-        func = self.view.ci.getItem(row,0).getItem(0,0).widget().isChecked() and self.addGraph or self.removeGraph
-        for col in range(self.view.ci.getItem(row,0).currentCol-1):
-            if self.view.ci.getItem(row,0).getItem(0,col+1).getItem(0,0).widget().isChecked():
+        func = self.graph_widget.getItem(row,0).getItem(0,0).widget().isChecked() and self.addGraph or self.removeGraph
+        for col in range(self.graph_widget.getItem(row,0).currentCol-1):
+            if self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(0,0).widget().isChecked():
                 func(row, col)
 
     def switchRowDisplay(self, row):
@@ -74,17 +132,17 @@ class MainWindow(pyqtgraph.QtGui.QWidget):
             self.switchGraphDisplay(row,col)
 
     def switchGraphDisplay(self, row, col):
-        if self.view.ci.getItem(row,0).getItem(0,col+1).getItem(0,0).widget().isChecked():
+        if self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(0,0).widget().isChecked():
             self.addGraph(row, col)
         else:
             self.removeGraph(row, col)
 
     def removeGraph(self, row, col):
-        self.view.ci.getItem(row,0).getItem(0,col+1).getItem(1,0).deleteLater()
+        self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(1,0).deleteLater()
 
     def addGraph(self, row, col):
-        self.log_parser.items[row][col].plot_item = self.view.ci.getItem(row,0).getItem(0,col+1).addPlot(row=1,col=0)
-        self.log_parser.items[row][col].plot_item.setXLink('r0c0')
+        self.log_parser.items[row][col].plot_item = self.graph_widget.getItem(row,0).getItem(0,col+1).addPlot(row=1,col=0)
+        self.log_parser.items[row][col].plot_item.setXLink(self.dummy_plot)
         self.log_parser.items[row][col].plotAllData(1)
 
 class DataloggerLogParserController:
@@ -236,10 +294,11 @@ if __name__  == '__main__':
     parser.add_argument('--max_time', type=float, help='xmax for graph : not implemented yet', default=0.0)
     parser.add_argument('-t', type=str, help='title', default="")
     parser.add_argument('--mabiki', type=int, help='mabiki step', default=1)
+    parser.add_argument('-b', type=bool, help='show button', default=False)
     parser.set_defaults(feature=False)
     args = parser.parse_args()
     # main
-    main_window = MainWindow(args.f, args.conf, args.t)
+    main_window = MainWindow(args.f, args.conf, args.t, args.b)
     main_window.log_parser.readData(args.min_time, args.max_time)
     main_window.log_parser.plotData(args.mabiki)
     main_window.showMaximized()
