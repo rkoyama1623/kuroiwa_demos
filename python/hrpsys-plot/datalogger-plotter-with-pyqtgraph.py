@@ -191,14 +191,30 @@ class DataloggerLogParserController:
         cur_row = 0
         for plot in self.plot_dic.items(): # plot : ('joint_velocity', {'field':[[0,1],[2,3]], 'log':['rh_q', 'st_q']})
             cur_fields = plot[1]['field']
-            cur_args = plot[1]['arg']
-            cur_logs = list(set(sum(cur_args,[])))
+            cur_args_list = plot[1]['arg']
+            cur_logs = list(set(sum(cur_args_list,[])))
             cur_funcs = 'func' in plot[1].keys() and plot[1]['func'] or None
             cur_names = 'name' in plot[1].keys() and plot[1]['name'] or []
+            cur_indices_lists = 'index' in plot[1].keys() and plot[1]['index'] or [[cur_fields for arg in args] for args in cur_args_list]
             post_processes = 'post-process' in plot[1].keys() and plot[1]['post-process'] or None
-            for cf in cur_fields: # cf : [0,1] -> [2,3]
-                for cur_col in cf:
-                    self.items[cur_row][cur_col-cf[0]].setPlotData(cur_field_offset=cf[0], row_num=self.row_num, group=plot[0], col_idx=cur_col, row_idx=cur_row, args_list=cur_args, funcs=cur_funcs, names=cur_names, post_processes=post_processes)
+
+            assert len(cur_args_list) == len(cur_indices_lists)
+            for args, indices_list in zip(cur_args_list, cur_indices_lists): assert len(args) == len(indices_list)
+
+            for field_idx, cf in enumerate(cur_fields): # cf : [0,1] -> [2,3]
+                for col_idx, cur_col in enumerate(cf):
+                    # procedure for parsing indices_list
+                    indices_list = []
+                    for args, idxs_list in zip(cur_args_list, cur_indices_lists):
+                        tmp = []
+                        for arg, idxs in zip(args, idxs_list):
+                            if idxs[field_idx] == []:
+                                idxs[field_idx] = cf
+                            else: assert len(idxs[field_idx]) == len(cf)
+                            tmp.append(idxs[field_idx][col_idx])
+                        indices_list.append(tmp)
+
+                    self.items[cur_row][cur_col-cf[0]].setPlotData(cur_field_offset=cf[0], row_num=self.row_num, group=plot[0], col_idx=cur_col, row_idx=cur_row, args_list=cur_args_list, funcs=cur_funcs, names=cur_names, post_processes=post_processes, indices_list=indices_list)
                     for cur_log in cur_logs:
                          self.items[cur_row][cur_col-cf[0]].plot_data_dict[cur_log] ={"data":self.dataListDict[cur_log][1], "tm":self.dataListDict[cur_log][0]}
                     self.items[cur_row][cur_col-cf[0]].plotAllData(mabiki)
@@ -220,7 +236,7 @@ class CustomedPlotItem():
         self.args_list = None
         self.funcs = None
 
-    def setPlotData(self, cur_field_offset, row_num, group, col_idx, row_idx, args_list, funcs, names, post_processes):
+    def setPlotData(self, cur_field_offset, row_num, group, col_idx, row_idx, args_list, funcs, names, post_processes, indices_list):
         if self.args_list == None:
             self.cur_field_offset = cur_field_offset
             self.row_num = row_num
@@ -232,6 +248,7 @@ class CustomedPlotItem():
             self.func_codes = []
             self.names = names
             self.post_processes = post_processes
+            self.indices_list = indices_list
 
             assert self.funcs == None or len(self.funcs) == len(self.args_list)
             assert self.post_processes == None or len(self.post_processes) == len(self.args_list)
@@ -247,6 +264,7 @@ class CustomedPlotItem():
 
     def plotData(self, i, mabiki):
         args = self.args_list[i]
+        indices = self.indices_list[i]
         name = len(self.names) == len(self.args_list) and self.names[i] or args[0]
         plot_data = self.plot_data_dict[args[0]]
         cl = args[0]
@@ -274,11 +292,11 @@ class CustomedPlotItem():
         if self.funcs == None or self.funcs[i] == '':
             assert len(args) == 1
             plot_data = self.plot_data_dict[args[0]]
-            cur_plot_item.plot(plot_data["tm"], plot_data["data"][:, self.col_idx][::mabiki], pen=pyqtgraph.mkPen(self.color_list[i], width=len(self.args_list)-i), name=name)
+            cur_plot_item.plot(plot_data["tm"], plot_data["data"][:, indices[0]][::mabiki], pen=pyqtgraph.mkPen(self.color_list[i], width=len(self.args_list)-i), name=name)
         else:
             data_list = [self.plot_data_dict[arg]["data"] for arg in args]
             func_src = self.funcs[i]
-            self.plot_item.plot(self.plot_data_dict[args[0]]["tm"], self.func_codes[i](data_list, self.col_idx, mabiki),  pen=pyqtgraph.mkPen(self.color_list[i], width=len(self.args_list)-i), name=name)
+            self.plot_item.plot(self.plot_data_dict[args[0]]["tm"], self.func_codes[i](data_list, indices, mabiki), pen=pyqtgraph.mkPen(self.color_list[i], width=len(self.args_list)-i), name=name)
         if self.post_processes != None:
             exec(self.post_processes[i])
 
