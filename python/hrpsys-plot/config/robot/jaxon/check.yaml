@@ -16,10 +16,10 @@
 
 "current":
   "arg": [['RobotHardware0_servoState']]
-  "func": ['lambda x, idx, mabiki, urata_len=13: x[0][:, (urata_len+1) * idx + (1+1)][::mabiki]']
+  "func": ['lambda x, indices, mabiki, urata_len=13: x[0][:, (urata_len+1) * indices[0] + (1+1)][::mabiki]']
   "field": [[0,1,2,3,4,5], [6,7,8,9,10,11], [12,13,14,15,16], [17, 18, 19, 20, 21, 22, 23, 24], [25, 26, 27, 28, 29, 30, 31, 32]]
 
 "80V":
   "arg": [['RobotHardware0_servoState']]
-  "func": ['lambda x, idx, mabiki, urata_len=13: x[0][:, (urata_len+1) * idx + (2+1)][::mabiki]']
+  "func": ['lambda x, indices, mabiki, urata_len=13: x[0][:, (urata_len+1) * indices[0] + (2+1)][::mabiki]']
   "field": [[0,1,2,3,4,5]]
