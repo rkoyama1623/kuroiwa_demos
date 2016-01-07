@@ -48,6 +48,11 @@ class MainWindow(pyqtgraph.QtGui.QWidget):
         self.graph_widget.ci.setContentsMargins(0,0,0,0)
         self.main_layout.addWidget(self.graph_widget)
 
+        self.graph_button_max_width = 15
+        self.graph_button_max_height = 15
+        self.row_button_max_width = 25
+        self.row_button_max_height = 25
+
         if title == '':
             self.setWindowTitle(fname.split('/')[-1])
         else:
@@ -66,7 +71,7 @@ class MainWindow(pyqtgraph.QtGui.QWidget):
             row_layout.setContentsMargins(0,0,0,0)
 
             if display_button:
-                proxy = makeProxy(max_height=25, max_width=25)
+                proxy = makeProxy(max_height=self.row_button_max_height, max_width=self.row_button_max_width)
                 proxy.widget().clicked.connect(functools.partial(self.switchRowDisplayCustomed, row=r))
                 row_layout.addItem(proxy,row=0,col=0)
 
