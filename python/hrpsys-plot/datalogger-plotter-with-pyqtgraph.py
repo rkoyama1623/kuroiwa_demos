@@ -102,29 +102,24 @@ class MainWindow(pyqtgraph.QtGui.QWidget):
             func(row)
 
     def removeRowProxy(self, row):
-        # self.graph_widget.getItem(row,0).getItem(0,0).widget().deleteLater()
+        self.graph_widget.getItem(row,0).getItem(0,0).widget().setMaximumWidth(0)
+        self.graph_widget.getItem(row,0).getItem(0,0).widget().setMaximumHeight(0)
         for col in range(self.graph_widget.getItem(row,0).currentCol-1):
             self.removeProxy(row, col)
 
     def addRowProxy(self, row):
-        proxy = makeProxy(max_height=25, max_width=25)
-        proxy.widget().clicked.connect(functools.partial(self.switchRowDisplayCustomed, row))
-        # self.graph_widget.getItem(row,0).addItem(proxy, row=0, col=0)
+        self.graph_widget.getItem(row,0).getItem(0,0).widget().setMaximumWidth(self.row_button_max_width)
+        self.graph_widget.getItem(row,0).getItem(0,0).widget().setMaximumHeight(self.row_button_max_height)
         for col in range(self.graph_widget.getItem(row,0).currentCol-1):
             self.addProxy(row, col)
 
     def removeProxy(self, row, col):
-        self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(0,0).deleteLater()
+        self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(0,0).widget().setMaximumWidth(0)
+        self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(0,0).widget().setMaximumHeight(0)
 
     def addProxy(self, row, col):
-        isChecked = True
-        try:
-            self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(1,0).size()
-        except RuntimeError:
-            isChecked = False
-        proxy = makeProxy(isChecked=isChecked)
-        proxy.widget().clicked.connect(functools.partial(self.switchGraphDisplay, row=row, col=col))
-        self.graph_widget.getItem(row,0).getItem(0,col+1).addItem(proxy, row=0, col=0)
+        self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(0,0).widget().setMaximumWidth(self.graph_button_max_width)
+        self.graph_widget.getItem(row,0).getItem(0,col+1).getItem(0,0).widget().setMaximumHeight(self.graph_button_max_height)
 
     def switchRowDisplayCustomed(self, row):
         func = self.graph_widget.getItem(row,0).getItem(0,0).widget().isChecked() and self.addGraph or self.removeGraph
