@@ -194,7 +194,7 @@ class DataloggerLogParserController:
             cur_args_list = plot[1]['arg']
             cur_logs = list(set(sum(cur_args_list,[])))
             cur_funcs = 'func' in plot[1].keys() and plot[1]['func'] or None
-            cur_names = 'name' in plot[1].keys() and plot[1]['name'] or []
+            cur_names_lists = 'name' in plot[1].keys() and plot[1]['name'] or [[[] for cur_field in cur_fields] for args in cur_args_list]
             cur_indices_lists = 'index' in plot[1].keys() and plot[1]['index'] or [[cur_fields for arg in args] for args in cur_args_list]
             post_processes = 'post-process' in plot[1].keys() and plot[1]['post-process'] or None
 
@@ -203,9 +203,10 @@ class DataloggerLogParserController:
 
             for field_idx, cf in enumerate(cur_fields): # cf : [0,1] -> [2,3]
                 for col_idx, cur_col in enumerate(cf):
-                    # procedure for parsing indices_list
+                    # procedure for parsing indices_list and names_list
                     indices_list = []
-                    for args, idxs_list in zip(cur_args_list, cur_indices_lists):
+                    names = []
+                    for args, idxs_list, nms_list in zip(cur_args_list, cur_indices_lists, cur_names_lists):
                         tmp = []
                         for arg, idxs in zip(args, idxs_list):
                             if idxs[field_idx] == []:
@@ -213,8 +214,12 @@ class DataloggerLogParserController:
                             else: assert len(idxs[field_idx]) == len(cf)
                             tmp.append(idxs[field_idx][col_idx])
                         indices_list.append(tmp)
+                        if nms_list[field_idx] == []:
+                            nms_list[field_idx] = [args[0] for val in cf]
+                        else: assert len(nms_list[field_idx]) == len(cf)
+                        names.append(nms_list[field_idx][col_idx])
 
-                    self.items[cur_row][cur_col-cf[0]].pushPlotData(cur_field_offset=cf[0], row_num=self.row_num, group=plot[0], col_idx=cur_col, row_idx=cur_row, args_list=cur_args_list, funcs=cur_funcs, names=cur_names, post_processes=post_processes, indices_list=indices_list)
+                    self.items[cur_row][cur_col-cf[0]].pushPlotData(cur_field_offset=cf[0], row_num=self.row_num, group=plot[0], col_idx=cur_col, row_idx=cur_row, args_list=cur_args_list, funcs=cur_funcs, names=names, post_processes=post_processes, indices_list=indices_list)
                     for cur_log in cur_logs:
                          self.items[cur_row][cur_col-cf[0]].plot_data_dict[cur_log] ={"data":self.dataListDict[cur_log][1], "tm":self.dataListDict[cur_log][0]}
 
@@ -253,7 +258,7 @@ class CustomedPlotItem():
         self.args_list += args_list
         if funcs != None: self.funcs += funcs
         if post_processes != None: self.post_processes += post_processes
-        self.names = names
+        self.names += names
         self.indices_list += indices_list
 
         assert funcs == None or len(funcs) == len(args_list)
@@ -271,7 +276,7 @@ class CustomedPlotItem():
     def plotData(self, i, mabiki):
         args = self.args_list[i]
         indices = self.indices_list[i]
-        name = len(self.names) == len(self.args_list) and self.names[i] or args[0]
+        name = self.names[i]
         plot_data = self.plot_data_dict[args[0]]
         cl = args[0]
         cur_data = plot_data["data"]
