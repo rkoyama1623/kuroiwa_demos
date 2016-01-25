@@ -217,7 +217,11 @@ class DataloggerLogParserController:
                     self.items[cur_row][cur_col-cf[0]].setPlotData(cur_field_offset=cf[0], row_num=self.row_num, group=plot[0], col_idx=cur_col, row_idx=cur_row, args_list=cur_args_list, funcs=cur_funcs, names=cur_names, post_processes=post_processes, indices_list=indices_list)
                     for cur_log in cur_logs:
                          self.items[cur_row][cur_col-cf[0]].plot_data_dict[cur_log] ={"data":self.dataListDict[cur_log][1], "tm":self.dataListDict[cur_log][0]}
-                    self.items[cur_row][cur_col-cf[0]].plotAllData(mabiki)
+
+                for col_idx, cur_col in enumerate(cf):
+                    # procedure for parsing indices_list
+                    self.items[cur_row][col_idx].plotAllData(mabiki)
+
                 y_min = min([val.plot_item.viewRange()[1][0] for val in self.items[cur_row]])
                 y_max = max([val.plot_item.viewRange()[1][1] for val in self.items[cur_row]])
                 if plot[0] != "joint_angle" and plot[0].find("_force") == -1 and plot[0] != "imu" and plot[0] != "comp":
