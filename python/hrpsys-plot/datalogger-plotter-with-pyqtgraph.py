@@ -214,7 +214,7 @@ class DataloggerLogParserController:
                             tmp.append(idxs[field_idx][col_idx])
                         indices_list.append(tmp)
 
-                    self.items[cur_row][cur_col-cf[0]].setPlotData(cur_field_offset=cf[0], row_num=self.row_num, group=plot[0], col_idx=cur_col, row_idx=cur_row, args_list=cur_args_list, funcs=cur_funcs, names=cur_names, post_processes=post_processes, indices_list=indices_list)
+                    self.items[cur_row][cur_col-cf[0]].pushPlotData(cur_field_offset=cf[0], row_num=self.row_num, group=plot[0], col_idx=cur_col, row_idx=cur_row, args_list=cur_args_list, funcs=cur_funcs, names=cur_names, post_processes=post_processes, indices_list=indices_list)
                     for cur_log in cur_logs:
                          self.items[cur_row][cur_col-cf[0]].plot_data_dict[cur_log] ={"data":self.dataListDict[cur_log][1], "tm":self.dataListDict[cur_log][0]}
 
@@ -237,32 +237,34 @@ class CustomedPlotItem():
         self.plot_item = plot_item
         self.color_list = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
         self.plot_data_dict = {}
-        self.args_list = None
-        self.funcs = None
+        self.args_list = []
+        self.funcs = []
+        self.func_codes = []
+        self.post_processes = []
+        self.indices_list = []
+        self.names = []
 
-    def setPlotData(self, cur_field_offset, row_num, group, col_idx, row_idx, args_list, funcs, names, post_processes, indices_list):
-        if self.args_list == None:
-            self.cur_field_offset = cur_field_offset
-            self.row_num = row_num
-            self.group = group
-            self.col_idx = col_idx
-            self.row_idx = row_idx
-            self.args_list = args_list
-            self.funcs = funcs
-            self.func_codes = []
-            self.names = names
-            self.post_processes = post_processes
-            self.indices_list = indices_list
+    def pushPlotData(self, cur_field_offset, row_num, group, col_idx, row_idx, args_list, funcs, names, post_processes, indices_list):
+        self.cur_field_offset = cur_field_offset
+        self.row_num = row_num
+        self.group = group
+        self.col_idx = col_idx
+        self.row_idx = row_idx
+        self.args_list += args_list
+        if funcs != None: self.funcs += funcs
+        if post_processes != None: self.post_processes += post_processes
+        self.names = names
+        self.indices_list += indices_list
 
-            assert self.funcs == None or len(self.funcs) == len(self.args_list)
-            assert self.post_processes == None or len(self.post_processes) == len(self.args_list)
+        assert funcs == None or len(funcs) == len(args_list)
+        assert post_processes == None or len(post_processes) == len(args_list)
 
-            if self.funcs != None:
-                for func_src in self.funcs:
-                    self.func_codes.append(eval(func_src))
+        if funcs != None:
+            for func_src in funcs:
+                self.func_codes.append(eval(func_src))
 
     def plotAllData(self, mabiki):
-        if self.args_list != None:
+        if self.args_list != []:
             for i in range(len(self.args_list)):
                 self.plotData(i, mabiki)
 
@@ -293,7 +295,7 @@ class CustomedPlotItem():
             elif self.group == "watt":
                 tmp_units = "W"
             cur_plot_item.setLabel("left", text="", units=tmp_units)
-        if self.funcs == None or self.funcs[i] == '':
+        if self.funcs == [] or self.funcs[i] == '':
             assert len(args) == 1
             plot_data = self.plot_data_dict[args[0]]
             cur_plot_item.plot(plot_data["tm"][::mabiki], plot_data["data"][:, indices[0]][::mabiki], pen=pyqtgraph.mkPen(self.color_list[i], width=2), name=name)
@@ -301,7 +303,7 @@ class CustomedPlotItem():
             data_list = [self.plot_data_dict[arg]["data"] for arg in args]
             func_src = self.funcs[i]
             self.plot_item.plot(self.plot_data_dict[args[0]]["tm"][::mabiki], self.func_codes[i](data_list, indices, mabiki), pen=pyqtgraph.mkPen(self.color_list[i], width=2), name=name)
-        if self.post_processes != None:
+        if self.post_processes != []:
             exec(self.post_processes[i])
 
 if __name__  == '__main__':
