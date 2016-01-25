@@ -292,11 +292,11 @@ class CustomedPlotItem():
         if self.funcs == None or self.funcs[i] == '':
             assert len(args) == 1
             plot_data = self.plot_data_dict[args[0]]
-            cur_plot_item.plot(plot_data["tm"], plot_data["data"][:, indices[0]][::mabiki], pen=pyqtgraph.mkPen(self.color_list[i], width=len(self.args_list)-i), name=name)
+            cur_plot_item.plot(plot_data["tm"][::mabiki], plot_data["data"][:, indices[0]][::mabiki], pen=pyqtgraph.mkPen(self.color_list[i], width=2), name=name)
         else:
             data_list = [self.plot_data_dict[arg]["data"] for arg in args]
             func_src = self.funcs[i]
-            self.plot_item.plot(self.plot_data_dict[args[0]]["tm"], self.func_codes[i](data_list, indices, mabiki), pen=pyqtgraph.mkPen(self.color_list[i], width=len(self.args_list)-i), name=name)
+            self.plot_item.plot(self.plot_data_dict[args[0]]["tm"][::mabiki], self.func_codes[i](data_list, indices, mabiki), pen=pyqtgraph.mkPen(self.color_list[i], width=2), name=name)
         if self.post_processes != None:
             exec(self.post_processes[i])
 
