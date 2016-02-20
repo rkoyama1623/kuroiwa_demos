@@ -1,0 +1,23 @@
+\documentclass[a4paper,xelatex,10pt,ja=standard,twocolumn]{bxjsarticle}
+
+\input{../preamble.tex}
+\hypersetup{pdftitle={KalmanFilter},
+        pdfsubject={memo},
+        pdfkeywords={kf, ekf}}
+
+\title{姿勢推定のためのKalmanFilter}
+
+\begin{document}
+\maketitle
+
+目次
+
+\begin{itemize}
+  \item \fullref{sec:knowledge_about_rotation}
+  \item \fullref{sec:rpy_kalman_filter}
+\end{itemize}
+
+\input{section/knowledge_about_rotation.tex}
+\input{section/rpy_kalman_filter.tex}
+
+\end{document}
