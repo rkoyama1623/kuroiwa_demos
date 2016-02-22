@@ -1,0 +1,378 @@
+\section{Quternion表現のKalmanFilter} \label{sec:quaternion_kalman_filter}
+
+\subsection{ジャイロのバイアスを含めたEKF}
+\subsubsection{関係式}
+角速度からクォータニオンを更新する式
+\begin{equation}
+  \dot{\tilde{\boldsymbol{q}}}_{t} =
+  \frac{1}{2}
+  \begin{pmatrix}
+    0        & -\omega_x & -\omega_y & -\omega_z\\
+    \omega_x &         0 &  \omega_z & -\omega_y\\
+    \omega_y & -\omega_z &         0 &  \omega_x\\
+    \omega_z &  \omega_y & -\omega_x &         0
+  \end{pmatrix}
+  \begin{pmatrix}
+    q_0\\
+    q_1\\
+    q_2\\
+    q_3
+  \end{pmatrix} =
+  \frac{1}{2}
+  \boldsymbol{\Omega}(\boldsymbol{\omega})
+  \tilde{\boldsymbol{q}}_{t}
+\end{equation}
+クォータニオンから重力加速度を求める式
+\begin{equation}
+  \begin{pmatrix}
+    acc_x\\
+    acc_y\\
+    acc_z
+  \end{pmatrix} =
+  {}^{W}_{A}\boldsymbol{R}^{T} \boldsymbol{g}^{W}
+  =
+  \begin{pmatrix}
+    2\left(- q_0 q_2 + q_1 q_3\right)\\
+    2\left(q_0 q_1 + q_2 q_3\right)\\
+    q_0^2-q_1^2-q_2^2+q_3^2
+  \end{pmatrix}
+  g
+\end{equation}
+状態量
+\begin{equation}
+  \boldsymbol{x} =
+  \begin{pmatrix}
+    q_0\\
+    q_1\\
+    q_2\\
+    q_3\\
+    b_{\omega_x}\\
+    b_{\omega_y}\\
+    b_{\omega_z}
+  \end{pmatrix} =
+  \begin{pmatrix}
+    \tilde{\boldsymbol{q}}\\
+    \boldsymbol{b}_{\omega}
+  \end{pmatrix}
+\end{equation}
+
+
+\subsubsection{中身}
+\begin{itemize}
+  \item $\boldsymbol{x}_{k}^{+}$
+  \item $\boldsymbol{P}_{k}^{+}$
+\end{itemize}
+がすでに求まっている状態で，
+\begin{itemize}
+  \item $\boldsymbol{\omega}_{k+1}$
+  \item $\boldsymbol{acc}_{k+1}$
+\end{itemize}
+を取得したところから始まる．
+
+謎だけど入力$\boldsymbol{u}$をジャイロだと考えて，
+Predicted state estimateは
+\newcommand*{\omegawithbias}[1]{
+  \frac{\omega_{{k+1}_#1} - b_{\omega_{{k}_#1}}^{+}}{2}\Delta t
+}
+\newcommand*{\tmpbibun}[1]{
+  \frac{\Delta t q_{#1}^{+}}{2}
+}
+\begin{align}
+  &\boldsymbol{x}_{k+1}^{-} =
+  \begin{pmatrix}
+    \tilde{\boldsymbol{q}}_{k+1}^{-}\\
+    \boldsymbol{b}_{{\omega}_{k+1}}^{-}
+  \end{pmatrix} = f(\boldsymbol{x}_{k}^{+}, \boldsymbol{u}_{k+1})\\
+  &=
+  \begin{pmatrix}
+    \frac{1}{2}
+    \boldsymbol{\Omega}(\boldsymbol{\omega}_{k+1} - \boldsymbol{b}_{{\omega}_{k}}^{+})
+    \tilde{\boldsymbol{q}}_{k}^{+}
+    \Delta t +
+    \tilde{\boldsymbol{q}}_{k}^{+}\\
+    \boldsymbol{b}_{{\omega}_{k}}^{+}
+  \end{pmatrix}\\
+  &= {\footnotesize
+    \setlength\arraycolsep{1pt}
+    \begin{pmatrix}
+      q_0^{+} -\omegawithbias{x}q_1^{+} -\omegawithbias{y}q_2^{+} -\omegawithbias{z}q_3^{+}\\
+      \omegawithbias{x} q_0^{+} +         q_1^{+} +  \omegawithbias{z}q_2^{+} -\omegawithbias{y}q_3^{+}\\
+      \omegawithbias{y} q_0^{+} -\omegawithbias{z}q_1^{+} +         q_2^{+} + \omegawithbias{x}q_3^{+}\\
+      \omegawithbias{z} q_0^{+} +\omegawithbias{y}q_1^{+} -\omegawithbias{x}q_2^{+} +         q_3^{+}\\
+      b_{\omega_{k_x}}^{+}\\
+      b_{\omega_{k_y}}^{+}\\
+      b_{\omega_{k_z}}^{+}
+    \end{pmatrix}
+  }
+\end{align}
+となるので，
+\begin{align}
+  &\boldsymbol{F}_{k} = \left. \frac{\partial f}{\partial \boldsymbol{x}}\right|_{\boldsymbol{x}_{k}^{+}, \boldsymbol{u}_{k+1}}\\
+  &=
+  {\tiny
+    \setlength\arraycolsep{1pt}
+    \left(
+    \begin{array}{cccc}
+      1 & -\omegawithbias{x} & -\omegawithbias{y} & -\omegawithbias{z}\\
+      \omegawithbias{x} & 1 & \omegawithbias{z} & -\omegawithbias{y}\\
+      \omegawithbias{y} & -\omegawithbias{z} & 1 &\omegawithbias{x}\\
+      \omegawithbias{z} & \omegawithbias{y} & -\omegawithbias{x} & 1\\
+      0 & 0 & 0 & 0\\
+      0 & 0 & 0 & 0\\
+      0 & 0 & 0 & 0
+    \end{array}\nonumber
+    \right.
+  }\\
+  & \left.
+  \begin{array}{ccc}
+     \tmpbibun{1} &  \tmpbibun{2} &  \tmpbibun{3}\\
+    -\tmpbibun{0} &  \tmpbibun{3} & -\tmpbibun{3}\\
+    -\tmpbibun{3} & -\tmpbibun{0} &  \tmpbibun{1}\\
+     \tmpbibun{2} & -\tmpbibun{1} & -\tmpbibun{0}\\
+     1 & 0 & 0\\
+     0 & 1 & 0\\
+     0 & 0 & 1
+  \end{array}
+  \right)\\
+  &=
+  \begin{pmatrix}
+    \Box & \triangle\\
+    \boldsymbol{O} & \boldsymbol{E}
+  \end{pmatrix}
+\end{align}
+よってPredicted covariance estimateは
+\begin{align}
+  \boldsymbol{P}_{k+1}^{-} &= \boldsymbol{F}_{k} \boldsymbol{P}_{k+1}^{+} \boldsymbol{F}_{k}^{T} +
+  \boldsymbol{Q}_{k+1}\\
+  &=
+  \begin{pmatrix}
+    \Box & \triangle\\
+    \boldsymbol{O} & \boldsymbol{E}
+  \end{pmatrix}
+  \begin{pmatrix}
+    \clubsuit & \heartsuit\\
+    \diamondsuit & \spadesuit
+  \end{pmatrix}
+  \begin{pmatrix}
+    \Box^{T} & \boldsymbol{O}\\
+    \triangle^{T} & \boldsymbol{E}
+  \end{pmatrix} +
+  \boldsymbol{Q}_{k+1}\\
+  &=
+  {\tiny
+    \begin{pmatrix}
+      \left(\Box \clubsuit + \triangle \diamondsuit \right) \Box^{T} + \left(\Box \heartsuit + \triangle \spadesuit \right) \triangle^{T} & \Box \heartsuit + \triangle \spadesuit\\
+      \diamondsuit \Box^{T} + \spadesuit \triangle^{T} & \spadesuit
+    \end{pmatrix}
+  } +
+  \boldsymbol{Q}_{k+1}\\
+  &=
+  {\tiny
+    \begin{pmatrix}
+      \left(\Box \clubsuit + \triangle \diamondsuit \right) \Box^{T} + \left(\Box \heartsuit + \triangle \spadesuit \right) \triangle^{T} + \boldsymbol{Q}_{k+1}^{upper} & \Box \heartsuit + \triangle \spadesuit\\
+      \diamondsuit \Box^{T} + \spadesuit \triangle^{T} & \spadesuit + \boldsymbol{Q}_{k+1}^{lower}
+    \end{pmatrix}
+  }\\
+  &=
+  \begin{pmatrix}
+    \clubsuit^{'} & \heartsuit^{'}\\
+    \diamondsuit^{'} & \spadesuit^{'}
+  \end{pmatrix}
+\end{align}
+注目は$\boldsymbol{F}_{k} \boldsymbol{P}_{k+1}^{+} \boldsymbol{F}_{k}^{T}$の右下$\spadesuit$が単調増加になってしまっているところ．
+これで予測の部分は終わり．
+ちなみに，$\boldsymbol{x}_{k+1}^{-}$はクォータニオンの要件である大きさ1を満たしていない可能性があるので，正規化する．
+
+次に，修正の部分．
+\begin{equation}
+  h(\boldsymbol{x}_{k+1}^{-}) = \tilde{\boldsymbol{q}}_{k+1}^{-\ast} \boldsymbol{g}^{W} \tilde{\boldsymbol{q}}_{k+1}^{-} =
+  \begin{pmatrix}
+    2\left(- q_0^{-} q_2^{-} + q_1^{-} q_3^{-}\right)\\
+    2\left(q_0^{-} q_1^{-} + q_2^{-} q_3^{-}\right)\\
+    {q_0^{-}}^2 - {q_1^{-}}^2 - {q_2^{-}}^2 + {q_3^{-}}^2
+  \end{pmatrix}
+  g
+\end{equation}
+より，
+\begin{align}
+  \boldsymbol{H}_{k+1} &= \left. \frac{\partial h}{\partial \boldsymbol{x}}\right|_{\boldsymbol{x}_{k+1}^{-}}\\
+  &=
+  2g
+  \begin{pmatrix}
+    -q_2^{-} &  q_3^{-} & -q_0^{-} &  q_1^{-} & 0 & 0 & 0\\
+     q_1^{-} &  q_0^{-} &  q_3^{-} &  q_2^{-} & 0 & 0 & 0\\
+     q_0^{-} & -q_1^{-} & -q_2^{-} & -q_3^{-} & 0 & 0 & 0
+  \end{pmatrix}\\
+  &=
+  \begin{pmatrix}
+    \pounds & \boldsymbol{O}
+  \end{pmatrix}
+\end{align}
+となる．
+よって
+\begin{align}
+  \boldsymbol{y}_{k+1} &= \boldsymbol{acc}_{k+1} - h(\boldsymbol{x}_{k+1}^{-})\\
+  \boldsymbol{S}_{k+1} &= \boldsymbol{H}_{k+1} \boldsymbol{P}_{k+1}^{-} \boldsymbol{H}_{k+1}^{T} + \boldsymbol{R}_{k+1}\\
+  \boldsymbol{K}_{k+1} &= \boldsymbol{P}_{k+1}^{-} \boldsymbol{H}_{k+1}^{T} \boldsymbol{S}_{k+1}^{-1}
+\end{align}
+となって
+\begin{align}
+  \boldsymbol{x}_{k+1}^{+} &= \boldsymbol{x}_{k+1}^{-} + \boldsymbol{K}_{k+1} \boldsymbol{y}_{k+1}\\
+  \boldsymbol{P}_{k+1}^{+} &= \left(\boldsymbol{E} - \boldsymbol{K}_{k+1} \boldsymbol{H}_{k+1}\right) \boldsymbol{P}_{k+1}^{-}
+\end{align}
+となる．
+$\boldsymbol{R}_{k+1}$が一定であれば，
+$\boldsymbol{P}_{k+1}^{+}$は今回の観測による影響は受けないことに注意．
+$\boldsymbol{H}_{k+1}$経由で次のサイクルから入る．
+
+また，
+\begin{align}
+  \boldsymbol{S}_{k+1} &= \boldsymbol{H}_{k+1} \boldsymbol{P}_{k+1}^{-} \boldsymbol{H}_{k+1}^{T} + \boldsymbol{R}_{k+1}\\
+  &=
+  \begin{pmatrix}
+    \pounds & \boldsymbol{O}
+  \end{pmatrix}
+  \begin{pmatrix}
+    \clubsuit^{'} & \heartsuit^{'}\\
+    \diamondsuit^{'} & \spadesuit^{'}
+  \end{pmatrix}
+  \begin{pmatrix}
+    \pounds & \boldsymbol{O}
+  \end{pmatrix}^{T} + \boldsymbol{R}_{k+1}\\
+  &=
+  \pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}
+\end{align}
+より
+\begin{align}
+  \boldsymbol{K}_{k+1} &= \boldsymbol{P}_{k+1}^{-} \boldsymbol{H}_{k+1}^{T} \boldsymbol{S}_{k+1}^{-1}\\
+  &=
+  \begin{pmatrix}
+    \clubsuit^{'} & \heartsuit^{'}\\
+    \diamondsuit^{'} & \spadesuit^{'}
+  \end{pmatrix}
+  \begin{pmatrix}
+    \pounds & \boldsymbol{O}
+  \end{pmatrix}^{T}
+  \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1}\\
+  &=
+  \begin{pmatrix}
+    \clubsuit^{'} \pounds^{T}\\
+    \diamondsuit^{'} \pounds^{T}
+  \end{pmatrix}
+  \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1}\\  &=
+  \begin{pmatrix}
+    \clubsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1}\\
+    \diamondsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1}
+  \end{pmatrix}\\
+  \boldsymbol{x}_{k+1}^{+} &= \boldsymbol{x}_{k+1}^{-} + \boldsymbol{K}_{k+1} \boldsymbol{y}_{k+1}\\
+  &=
+  \begin{pmatrix}
+    \tilde{\boldsymbol{q}}_{k+1}^{+}\\
+    \boldsymbol{b}_{{\omega}_{k+1}}^{+}
+  \end{pmatrix}\\
+  &=
+  \begin{pmatrix}
+    \tilde{\boldsymbol{q}}_{k+1}^{-}\\
+    \boldsymbol{b}_{{\omega}_{k+1}}^{-}
+  \end{pmatrix} +
+  \begin{pmatrix}
+    \clubsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \boldsymbol{y}_{k+1}\\
+    \diamondsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \boldsymbol{y}_{k+1}
+  \end{pmatrix}\\
+  \boldsymbol{P}_{k+1}^{+} &= \left(\boldsymbol{E} - \boldsymbol{K}_{k+1} \boldsymbol{H}_{k+1}\right) \boldsymbol{P}_{k+1}^{-}\\
+  &=
+  {\footnotesize
+    \left(\boldsymbol{E} -
+    \begin{pmatrix}
+      \clubsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds & \boldsymbol{O}\\
+      \diamondsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds & \boldsymbol{O}
+    \end{pmatrix}
+    \right) \boldsymbol{P}_{k+1}^{-}}\\
+  &=
+  \begin{pmatrix}
+    \boldsymbol{E} - \clubsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds & \boldsymbol{O}\\
+    - \diamondsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds & \boldsymbol{E}
+  \end{pmatrix}
+  \boldsymbol{P}_{k+1}^{-}\\
+  &=
+  {\tiny
+    \begin{pmatrix}
+      \boldsymbol{E} - \clubsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds & \boldsymbol{O}\\
+      - \diamondsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds & \boldsymbol{E}
+    \end{pmatrix}
+    \begin{pmatrix}
+      \clubsuit^{'} & \heartsuit^{'}\\
+      \diamondsuit^{'} & \spadesuit^{'}
+    \end{pmatrix}
+  }\\
+  &=
+  {\tiny
+    \begin{pmatrix}
+      \clubsuit^{'} - \clubsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds \clubsuit^{'} & \heartsuit^{'} - \clubsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds \heartsuit^{'}\\
+      \diamondsuit^{'} - \diamondsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds \clubsuit^{'} & \spadesuit^{'} - \diamondsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds \heartsuit^{'}
+    \end{pmatrix}
+  }
+\end{align}
+
+さらに，更新の時と同様に$\boldsymbol{x}_{k+1}^{+}$はクォータニオンの要件である大きさ1を満たしていない可能性があるので，正規化する．
+
+ところで$\boldsymbol{P}^{+}$が対角行列だとすると
+\begin{align}
+\boldsymbol{P}_{k+1}^{-} &= \boldsymbol{F}_{k} \boldsymbol{P}_{k+1}^{+} \boldsymbol{F}_{k}^{T} +
+  \boldsymbol{Q}_{k+1}\\
+  &=
+  {\tiny
+    \begin{pmatrix}
+      \Box \clubsuit \Box^{T} + \triangle \spadesuit \triangle^{T} + \boldsymbol{Q}_{k+1}^{upper} & \triangle \spadesuit\\
+      \spadesuit \triangle^{T} & \spadesuit + \boldsymbol{Q}_{k+1}^{lower}
+    \end{pmatrix}
+  }\\
+  &=
+  \begin{pmatrix}
+    \clubsuit^{'} & \triangle \spadesuit\\
+    \spadesuit \triangle^{T} & \spadesuit + \boldsymbol{Q}_{k+1}^{lower}
+  \end{pmatrix}\\
+  \boldsymbol{P}_{k+1}^{+} &=
+  {\tiny
+    \begin{pmatrix}
+      \clubsuit^{'} - \clubsuit^{'} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds \clubsuit^{'} & \triangle \spadesuit\\
+      \spadesuit \triangle^{T} - \spadesuit \triangle^{T} \pounds^{T} \left(\pounds \clubsuit^{'} \pounds^{T} + \boldsymbol{R}_{k+1}\right)^{-1} \pounds \clubsuit^{'} & \spadesuit + \boldsymbol{Q}_{k+1}^{lower}
+    \end{pmatrix}
+  }
+\end{align}
+となるので，対角行列ではないっぽい．
+
+\subsection{autopilotの実装}
+\url{http://autopilot.sourceforge.net/kalman.html}がwebページでは紹介されているけど，実装はもっと別のことをしているっぽい．
+ジャイロが2つしかついていないっぽいのと，$C$の計算が謎い．
+
+\begin{align}
+  \boldsymbol{A} =
+  \begin{pmatrix}
+    0 & -p & -q & 0 & \frac{q_1}{2} & \frac{q_2}{2}\\
+    p & 0 & 0 & -q & -\frac{q_0}{2} & \frac{q_3}{2}\\
+    q & 0 & 0 & p & -\frac{q_3}{2} & -\frac{q_0}{2}\\
+    0 & q & -p & 0 & \frac{q_2}{2} & -\frac{q_1}{2}\\
+    0 & 0 & 0 & 0 & 0 & 0\\
+    0 & 0 & 0 & 0 & 0 & 0
+  \end{pmatrix}\\
+  \boldsymbol{Q} =
+  \begin{pmatrix}
+    0.01^2\\
+    & 0.01^2\\
+    && 0.01^2\\
+    &&& 0.01^2\\
+    &&&& 0.03\\
+    &&&&& 0.03
+  \end{pmatrix}\\
+  \boldsymbol{P}^{-}_{k+1} = \boldsymbol{P}^{+}_{k} + \Delta t \left(\boldsymbol{Q} + \boldsymbol{A}_{k+1} \boldsymbol{P}^{+}_{k} + \boldsymbol{P}^{+}_{k} \boldsymbol{A}_{k+1}^{T} \right)\\
+  \tilde{\boldsymbol{q}}_{k+1}^{-} = \tilde{\boldsymbol{q}}_{k}^{+} +
+  \Delta t
+  \begin{pmatrix}
+    0 & -p & -q & 0\\
+    p & 0 & 0 & -q\\
+    q & 0 & 0 & p\\
+    0 & q & -p & 0
+  \end{pmatrix}
+  \tilde{\boldsymbol{q}}_{k}^{+}
+\end{align}

@@ -1,1 +1,432 @@
 \section{オイラー角表現のKalmanFilter} \label{sec:rpy_kalman_filter}
+ここでいうオイラー角はZXYオイラー角で，ロール・ピッチ・ヨーのこと．
+
+IMUが観測する角速度とRPYの関係式は
+\begin{equation}
+  \begin{pmatrix}
+    \dot{\alpha}\\
+    \dot{\beta}\\
+    \dot{\gamma}
+  \end{pmatrix} =
+  \begin{pmatrix}
+    1 & \frac{\sin \alpha \sin \beta}{\cos \beta} & \frac{\cos \alpha \sin \beta}{\cos \beta} \\
+    0 & \cos \alpha & - \sin \alpha \\
+    0 & \frac{\sin \alpha}{\cos \beta} & \frac{\cos \alpha}{\cos \beta}
+  \end{pmatrix}
+  \begin{pmatrix}
+    \omega_x\\
+    \omega_y\\
+    \omega_z
+  \end{pmatrix}\label{eq:rpy-gyro}
+\end{equation}
+で，自身が加速していない場合の加速度と姿勢の関係式は
+\begin{align}
+  \begin{pmatrix}
+    acc_x\\
+    acc_y\\
+    acc_z
+  \end{pmatrix} &= {}^{W}_{A}\boldsymbol{R}^{T} \boldsymbol{g}^{W}\\
+  &= \begin{pmatrix}
+    -\sin \beta\\
+    \sin \alpha \cos \beta\\
+    \cos \alpha \cos \beta
+  \end{pmatrix}
+  g
+\end{align}
+
+\autoref{eq:rpy-gyro}を$\alpha = 0$，$\beta = 0$で近似すれば線形＋互いに素にできるし，
+近似しなければEKFでできる．
+EKFの場合は$\beta = \frac{\pi}{2}$で\autoref{eq:rpy-gyro}が0除算してしまって破綻する．
+
+\subsection{線形カルマンフィルタ}
+\subsubsection{事前準備}
+関係式（ゼロ点付近で近似）
+\begin{equation}
+  \begin{pmatrix}
+    \dot{\alpha}\\
+    \dot{\beta}\\
+    \dot{\gamma}
+  \end{pmatrix} =
+  \begin{pmatrix}
+    1 & 0 & 0 \\
+    0 & 1 & 0 \\
+    0 & 0 & 1
+  \end{pmatrix}
+  \begin{pmatrix}
+    \omega_x\\
+    \omega_y\\
+    \omega_z
+  \end{pmatrix}
+\end{equation}
+内部状態（オイラー角＋その微分（角速度）のバイアス）
+\begin{equation}
+  \boldsymbol{x} =
+  \begin{pmatrix}
+    \alpha\\
+    \beta\\
+    \gamma\\
+    b_{w_x}\\
+    b_{w_y}\\
+    b_{w_z}
+  \end{pmatrix}
+\end{equation}
+予測（互いに独立しているので，decouple可能）
+{\tiny
+  \begin{equation}
+    \boldsymbol{x}_{k+1}^{-} =
+    \begin{pmatrix}
+      1 & 0 & 0 & -\Delta t & 0 & 0\\
+      0 & 1 & 0 & 0 & -\Delta t & 0\\
+      0 & 0 & 1 & 0 & 0 & -\Delta t\\
+      0 & 0 & 0 & 1 & 0 & 0\\
+      0 & 0 & 0 & 0 & 1 & 0\\
+      0 & 0 & 0 & 0 & 0 & 1
+    \end{pmatrix}
+    \boldsymbol{x}_{k}^{+} +
+    \begin{pmatrix}
+      \Delta t & 0 & 0\\
+      0 & \Delta t & 0\\
+      0 & 0 & \Delta t\\
+      0 & 0 & 0\\
+      0 & 0 & 0\\
+      0 & 0 & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+      \dot{\alpha}\\
+      \dot{\beta}\\
+      \dot{\gamma}
+    \end{pmatrix}
+  \end{equation}
+}
+観測（線形にするために観測した加速度を元に求めた姿勢を観測したことにする）
+\begin{align}
+  \alpha &= \arctan \frac{\sin \alpha}{\cos \alpha} = \arctan \frac{acc_y}{acc_z}\\
+  \beta &= \arctan \frac{\sin \beta}{\cos \beta} = \arctan \frac{-acc_x}{\sqrt{acc_y^2 + acc^2_z}}
+\end{align}
+
+\subsubsection{中身}
+\begin{align}
+  \begin{pmatrix}
+    \alpha_{k+1}^{-}\\
+    b_{{\omega_x}_{k+1}}^{-}
+  \end{pmatrix} =
+  \begin{pmatrix}
+    1 & -\Delta t\\
+    0 & 1
+  \end{pmatrix}
+  \begin{pmatrix}
+    \alpha_{k}^{+}\\
+    b_{{\omega_x}_{k}}^{+}
+  \end{pmatrix} +
+  \begin{pmatrix}
+    \Delta t\\
+    0
+  \end{pmatrix}
+  \dot{\alpha}_{k+1}
+\end{align}
+\begin{align}
+  \boldsymbol{P}_{k+1}^{-}
+  &=
+  \begin{pmatrix}
+    1 & -\Delta t\\
+    0 & 1
+  \end{pmatrix}
+  \boldsymbol{P}_{k+1}^{+}
+  \begin{pmatrix}
+    1 & -\Delta t\\
+    0 & 1
+  \end{pmatrix}^{T} +
+  \boldsymbol{Q}_{k+1}\\
+  &=
+  \begin{pmatrix}
+    1 & -\Delta t\\
+    0 & 1
+  \end{pmatrix}
+  \begin{pmatrix}
+    \clubsuit & \heartsuit\\
+    \diamondsuit & \spadesuit
+  \end{pmatrix}
+  \begin{pmatrix}
+    1 & -\Delta t\\
+    0 & 1
+  \end{pmatrix}^{T} +
+  \boldsymbol{Q}_{k+1}\\
+  &=
+  \begin{pmatrix}
+    \clubsuit - \Delta t \diamondsuit & \heartsuit - \Delta t \spadesuit\\
+    \diamondsuit & \spadesuit
+  \end{pmatrix}
+  \begin{pmatrix}
+    1 & 0\\
+    -\Delta t & 1
+  \end{pmatrix} +
+  \boldsymbol{Q}_{k+1}\\
+  &=
+  \begin{pmatrix}
+    \clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t & \heartsuit - \spadesuit \Delta t\\
+    \diamondsuit - \spadesuit \Delta t & \spadesuit
+  \end{pmatrix} +
+  \boldsymbol{Q}_{k+1}\\
+  &=
+  {\footnotesize
+    \begin{pmatrix}
+      \clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1} & \heartsuit - \spadesuit \Delta t\\
+      \diamondsuit - \spadesuit \Delta t & \spadesuit + Q^{lower}_{k+1}
+    \end{pmatrix}
+  }
+\end{align}
+加速度から求めた姿勢を観測したことになっているので，
+\begin{equation}
+  h(\begin{pmatrix}
+    \alpha_{k+1}^{-}\\
+    b_{{\omega_x}_{k+1}}^{-}
+  \end{pmatrix}) =
+  \begin{pmatrix}
+    1 & 0
+  \end{pmatrix}
+  \begin{pmatrix}
+    \alpha_{k+1}^{-}\\
+    b_{{\omega_x}_{k+1}}^{-}
+  \end{pmatrix} =
+  \alpha_{k+1}^{-}
+\end{equation}
+
+よって，
+\begin{align}
+  y_{k+1} &= z_{k+1} - \alpha_{k+1}^{-}\\
+  S_{k+1} &=
+  \begin{pmatrix}
+    1 & 0
+  \end{pmatrix}
+  \boldsymbol{P}_{k+1}^{-}
+  \begin{pmatrix}
+    1 & 0
+  \end{pmatrix}^{T} + R_{k+1}\\
+  &=
+  \clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1} + R_{k+1}\\
+  \boldsymbol{K}_{k+1} &=
+  \boldsymbol{P}_{k+1}^{-}
+  \begin{pmatrix}
+    1 & 0
+  \end{pmatrix}^{T}
+  S_{k+1}^{-1}\\
+  &=
+  \begin{pmatrix}
+    \clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1}\\
+    \diamondsuit - \spadesuit \Delta t
+  \end{pmatrix}
+  S_{k+1}^{-1}\\
+  &=
+  \begin{pmatrix}
+    \frac{1}{1 + \frac{R_{k+1}}{\clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1}}}\\
+    \frac{\diamondsuit - \spadesuit \Delta t}{\clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1} + R_{k+1}}
+  \end{pmatrix}
+\end{align}
+となるので
+\begin{align}
+  \begin{pmatrix}
+    \alpha_{k+1}^{+}\\
+    b_{{\omega_x}_{k+1}}^{+}
+  \end{pmatrix} &=
+  \begin{pmatrix}
+    \alpha_{k+1}^{-}\\
+    b_{{\omega_x}_{k+1}}^{-}
+  \end{pmatrix} +
+  \boldsymbol{K}_{k+1} y_{k+1}\\
+  &=
+  \begin{pmatrix}
+    \frac{{\color{red} \clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1}} z_{k+1} + {\color{blue} R_{k+1}} \alpha_{k+1}^{-}}{{\color{red} \clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1}} + {\color{blue} R_{k+1}}}\\
+    b_{{\omega_x}_{k+1}}^{+}
+  \end{pmatrix}\\
+  \boldsymbol{P}_{k+1}^{+} &= \left(\boldsymbol{E} - \boldsymbol{K}_{k+1}
+  \begin{pmatrix}
+    1 & 0
+  \end{pmatrix}
+  \right) \boldsymbol{P}_{k+1}^{-}\\
+  &=
+  \left(\boldsymbol{E} -
+  {\tiny
+    \begin{pmatrix}
+      \frac{1}{1 + \frac{R_{k+1}}{\clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1}}} & 0\\
+      \frac{\diamondsuit - \spadesuit \Delta t}{\clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1} + R_{k+1}} & 0
+    \end{pmatrix}
+  }
+  \right) \boldsymbol{P}_{k+1}^{-}\\
+  &=
+  \begin{pmatrix}
+    \frac{1}{1 + \frac{\clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1}}{R_{k+1}}} & 0\\
+    -\frac{\diamondsuit - \spadesuit \Delta t}{\clubsuit - (\diamondsuit + \heartsuit) \Delta t + \spadesuit \Delta^2 t + Q^{upper}_{k+1} + R_{k+1}} & 1
+  \end{pmatrix}
+  \boldsymbol{P}_{k+1}^{-}
+\end{align}
+となる．
+
+ここで，2016/02/22のhrpsysの実装では
+\begin{align}
+  \begin{pmatrix}
+    \alpha_{0}^{+}\\
+    b_{{\omega_x}_{0}}^{+}
+  \end{pmatrix} &=
+  \begin{pmatrix}
+    0\\
+    0
+  \end{pmatrix}\\
+  \boldsymbol{P}_{0}^{+} &= \boldsymbol{O}\\
+  \boldsymbol{Q} &=
+  \begin{pmatrix}
+    0.001 * \Delta t & 0\\
+    0 & 0.003 * \Delta t
+  \end{pmatrix}\\
+  R &= 1000
+\end{align}
+なので，1ステップ進めると
+\begin{align}
+  \begin{pmatrix}
+    \alpha_{1}^{-}\\
+    b_{{\omega_x}_{1}}^{-}
+  \end{pmatrix} &=
+  \begin{pmatrix}
+    {\omega_x}_{1} \Delta t\\
+    0
+  \end{pmatrix}\\
+  \boldsymbol{P}_{1}^{-} &=
+  \begin{pmatrix}
+    0.001 * \Delta t & 0\\
+    0 & 0.003 * \Delta t
+  \end{pmatrix}\\
+  S_{1} &= 0.001 * \Delta t + 1000\\
+  \boldsymbol{K}_{1} &=
+  \begin{pmatrix}
+    \frac{0.001 * \Delta t}{0.001 * \Delta t + 1000}\\
+    0
+  \end{pmatrix}\\
+  \begin{pmatrix}
+    \alpha_{1}^{+}\\
+    b_{{\omega_x}_{1}}^{+}
+  \end{pmatrix} &=
+  \begin{pmatrix}
+    {\omega_x}_{1} \Delta t\\
+    0
+  \end{pmatrix} +
+  \begin{pmatrix}
+    \frac{0.001 * \Delta t}{0.001 * \Delta t + 1000}\\
+    0
+  \end{pmatrix}
+  \left(z_{1} - {\omega_x}_{1} \Delta t\right)\\
+  &=
+  \begin{pmatrix}
+    \frac{0.001 * \Delta t * z_{1} + 1000 * {\omega_x}_{1} \Delta t}{0.001 * \Delta t + 1000}\\
+    0
+  \end{pmatrix}\\
+  \boldsymbol{P}_{1}^{+} &=
+  \begin{pmatrix}
+    \frac{1000}{0.001 * \Delta t + 1000} & 0\\
+    0 & 1
+  \end{pmatrix}
+  \begin{pmatrix}
+    0.001 * \Delta t & 0\\
+    0 & 0.003 * \Delta t
+  \end{pmatrix}\\
+  &=
+  \begin{pmatrix}
+    \frac{\Delta t}{0.001 * \Delta t + 1000} & 0\\
+    0 & 1
+  \end{pmatrix}\\
+  &\simeq
+  \begin{pmatrix}
+    0.001 * \Delta t & 0\\
+    0 & 1
+  \end{pmatrix}
+\end{align}
+で，もう1ステップ進めると
+\begin{align}
+  \begin{pmatrix}
+    \alpha_{2}^{-}\\
+    b_{{\omega_x}_{2}}^{-}
+  \end{pmatrix} &=
+  \begin{pmatrix}
+    \frac{0.001 * \Delta t * z_{1} + 1000 * {\omega_x}_{1} \Delta t}{0.001 * \Delta t + 1000} + {\omega_x}_2 \Delta t\\
+    0
+  \end{pmatrix}\\
+  \boldsymbol{P}_{2}^{-} &=
+  {\footnotesize
+    \begin{pmatrix}
+      \frac{\Delta t}{0.001 * \Delta t + 1000} + \Delta^2 t + 0.001 * \Delta t & - \Delta t\\
+      - \Delta t & 1 + 0.003 * \Delta t
+    \end{pmatrix}}\\
+  &\simeq
+  \begin{pmatrix}
+    \frac{\left(2 + 1000 \Delta t\right) e^{3} \Delta t}{\Delta t + 1e^{6}} & - \Delta t\\
+    - \Delta t & 1 + 0.003 * \Delta t
+  \end{pmatrix}\\
+  S_{2} &\simeq \frac{\left(2 + 1000 \Delta t\right)\Delta t}{0.001 * \Delta t + 1000} + 1000\\
+  &= \frac{\left(3 + 1000 \Delta t\right)\Delta t + 1e^{6}}{0.001 * \Delta t + 1000}\\
+  \boldsymbol{K}_{2}
+  &\simeq
+  \begin{pmatrix}
+    \frac{\left(2 + 1000 \Delta t\right)\Delta t}{\left(3 + 1000 \Delta t\right)\Delta t + 1e^{6}}\\
+    \frac{-0.001 * \Delta^2 t - 1000 \Delta t}{\left(3 + 1000 \Delta t\right)\Delta t + 1e^{6}}
+  \end{pmatrix}\\
+  &\simeq
+  \begin{pmatrix}
+    \frac{\left(2 + 1000 \Delta t\right)\Delta t}{\left(3 + 1000 \Delta t\right)\Delta t + 1e^{6}}\\
+    \frac{- 1000 \Delta t}{\left(3 + 1000 \Delta t\right)\Delta t + 1e^{6}}
+  \end{pmatrix}\\
+  \begin{pmatrix}
+    \alpha_{2}^{+}\\
+    b_{{\omega_x}_{2}}^{+}
+  \end{pmatrix} &=
+  \begin{pmatrix}
+    \alpha_{2}^{-}\\
+    b_{{\omega_x}_{2}}^{-}
+  \end{pmatrix} + \boldsymbol{K}_{2} \left(z_2 - \alpha_{2}^{-}\right)\\
+  &=
+  \begin{pmatrix}
+    \frac{\left(2 + 1000 \Delta t\right)\Delta t z_2 + \left(\Delta t + 1e^6\right) \alpha_2}{\left(3 + 1000 \Delta t\right)\Delta t + 1e^{6}}\\
+    0
+  \end{pmatrix}\\
+  \boldsymbol{P}_{2}^{+} &=
+  {\tiny
+    \setlength\arraycolsep{3pt}
+    \begin{pmatrix}
+      \frac{\Delta t + 1e^6}{\left(3 + 1000 \Delta t\right)\Delta t + 1e^{6}} & 0\\
+      \frac{1000 \Delta t}{\left(3 + 1000 \Delta t\right)\Delta t + 1e^{6}} & 1
+    \end{pmatrix}
+    \begin{pmatrix}
+      \frac{\left(2 + 1000 \Delta t\right) e^{3} \Delta t}{\Delta t + 1e^{6}} & - \Delta t\\
+      - \Delta t & 1 + 0.003 * \Delta t
+    \end{pmatrix}}\\
+  &=
+  \begin{pmatrix}
+    \frac{\left(2 + 1000 \Delta t\right) e^{3} \Delta t}{\left(3 + 1000 \Delta t\right)\Delta t + 1e^{6}} & \frac{-\left(\Delta t + 1e^6\right) \Delta t}{\left(3 + 1000 \Delta t\right)\Delta t + 1e^{6}}\\
+    ? & ?
+  \end{pmatrix}\\
+  &\simeq
+  \begin{pmatrix}
+    0.002 * \Delta t & ?\\
+    ? & ?
+  \end{pmatrix}
+\end{align}
+となって，最終的には
+\begin{align}
+  \boldsymbol{P}^{+} &=
+  \begin{pmatrix}
+    0.558269 & -0.077438\\
+    -0.077438 & 0.0216277
+  \end{pmatrix}\\
+  \boldsymbol{K} &=
+  \begin{pmatrix}
+    0.000558269\\
+    -7.7438e-05
+  \end{pmatrix}\\
+  S &= 1000.56
+\end{align}
+に収束していた．なんでだろう．
+
+ただ，とりあえずジャイロの積算のみに頼っていることが分かったので，
+ゼロ点がずれていると一生ずれるのと早く動くとずれるということがわかった．
+
+\autoref{eq:rpy-gyro}を使って入力しているジャイロを変換することで，
+ゼロ点周りでの近似誤差を減らすことが可能．
+
+\subsection{非線形カルマンフィルタ}
