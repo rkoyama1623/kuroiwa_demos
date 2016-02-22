@@ -70,9 +70,20 @@
     \end{pmatrix}
   \end{equation}
   いや，これは微妙かも．違うかもしれない．難しいので，一旦置いておく．
+\item[\fullref{subsec:quat-dcm}]\mbox{}\\
+  \begin{equation}
+    {}^{W}_{A}\boldsymbol{R} =
+    {\tiny
+      \begin{pmatrix}
+        q_0^2+q_1^2-q_2^2-q_3^2 & 2\left(q_1 q_2 + q_0 q_3\right) & 2\left(q_1 q_3 - q_0 q_2\right)\\
+        2\left(q_1 q_2 - q_0 q_3\right) & q_0^2-q_1^2+q_2^2-q_3^2 & 2\left(q_2 q_3 - q_0 q_1\right)\\
+        2\left(q_1 q_3 - q_0 q_2\right) & 2\left(q_2 q_3 - q_0 q_1\right) & q_0^2-q_1^2-q_2^2+q_3^2
+      \end{pmatrix}
+    }
+  \end{equation}
 \end{description}
 
-の4つ．
+である．
 
 \subsection{回転行列の角速度の関係}\label{subsec:gyro}
 
@@ -256,7 +267,7 @@ RPYは，オイラー角の一種で，Z$\to$Y$\to$Xの順番で軸周りに回�
       \cos \beta \cos \gamma & \sin \alpha \sin \beta \cos \gamma - \cos \alpha \sin \gamma & \cos \alpha \sin \beta \cos \gamma + \sin \alpha \sin \gamma \\
       \cos \beta \sin \gamma & \sin \alpha \sin \beta \sin \gamma + \cos \alpha \cos \gamma & \cos \alpha \sin \beta \sin \gamma - \sin \alpha \cos \gamma \\
       -\sin \beta & \sin \alpha \cos \beta & \cos \alpha \cos \beta
-  \end{pmatrix}}
+  \end{pmatrix}}\label{eq:DCM}
 \end{equation}
 となる．
 
@@ -332,7 +343,9 @@ RPYは，オイラー角の一種で，Z$\to$Y$\to$Xの順番で軸周りに回�
     0 & - a_{33} & a_{23}
   \end{pmatrix}\\
   \Leftrightarrow & \omega_{x} \boldsymbol{X}_1 =
-  {\tiny \begin{pmatrix}
+  {\tiny
+    \setlength\arraycolsep{1pt}
+    \begin{pmatrix}
       0 & 0 & 0\\
       0 & \dot{a}_{31} a_{31} + \dot{a}_{32} a_{32} + \dot{a}_{33} a_{33} & - \dot{a}_{31} a_{21} - \dot{a}_{32} a_{22} - \dot{a}_{33} a_{23}\\
       0 & - a_{31} \dot{a}_{21} - a_{32} \dot{a}_{22} - a_{33} \dot{a}_{23} & \dot{a}_{21} a_{21} + \dot{a}_{22} a_{22} + \dot{a}_{23} a_{23}
@@ -341,13 +354,16 @@ RPYは，オイラー角の一種で，Z$\to$Y$\to$Xの順番で軸周りに回�
 ここで，回転行列の性質$a_{31}^2 + a_{32}^2 + a_{33}^2=1$と$a_{31} a_{21} + a_{32} a_{22} + a_{33} a_{23} = 0$より，微分して，$\dot{a}_{31} a_{31} + \dot{a}_{32} a_{32} + \dot{a}_{33} a_{33} = 0$と$\dot{a}_{31} a_{21} + \dot{a}_{32} a_{22} + \dot{a}_{33} a_{23} = - a_{31} \dot{a}_{21} - a_{32} \dot{a}_{22} - a_{33} \dot{a}_{23}$なので，
 \begin{align}
   & \omega_{x} \boldsymbol{X}_1 =
-  {\tiny \begin{pmatrix}
+  {\tiny
+    \setlength\arraycolsep{1pt}
+    \begin{pmatrix}
       0 & 0 & 0\\
       0 & \dot{a}_{31} a_{31} + \dot{a}_{32} a_{32} + \dot{a}_{33} a_{33} & - \dot{a}_{31} a_{21} - \dot{a}_{32} a_{22} - \dot{a}_{33} a_{23}\\
       0 & - a_{31} \dot{a}_{21} - a_{32} \dot{a}_{22} - a_{33} \dot{a}_{23} & \dot{a}_{21} a_{21} + \dot{a}_{22} a_{22} + \dot{a}_{23} a_{23}
   \end{pmatrix}}\\
   \Leftrightarrow & \omega_{x} \boldsymbol{X}_1 =
   {\tiny
+    \setlength\arraycolsep{1pt}
     \begin{pmatrix}
       0 & 0 & 0\\
       0 & 0 & - \dot{a}_{31} a_{21} - \dot{a}_{32} a_{22} - \dot{a}_{33} a_{23}\\
@@ -691,3 +707,107 @@ IMUが観測するのはlocal座標で表された角速度なので，
 のように中身がちょっと変わるので，注意．
 
 \subsection{加速度と回転の関係}\label{subsec:acc}
+わかった気になっていたけど，よく分かっていない．
+
+回転しながら自由落下しているIMUは加速度としてどんな値を返すか，が分かれば良さそう．
+
+\subsection{クォータニオンと回転行列の関係}\label{subsec:quat-dcm}
+
+\url{http://jp.mathworks.com/help/aeroblks/quaternionstodirectioncosinematrix.html}が参考になる．
+\begin{gather}
+  \boldsymbol{p}^{A} = {}^{W}_{A}\boldsymbol{R}^{T} \boldsymbol{p}^{W}\\
+  \boldsymbol{p}^{A} = \tilde{\boldsymbol{q}}^{\ast} \boldsymbol{p}^{W} \tilde{\boldsymbol{q}}
+\end{gather}
+であることに注目して，クォータニオンの演算を書き下すと
+{\tiny
+  \begin{align}
+    \boldsymbol{p}^{A} &= \tilde{\boldsymbol{q}}^{\ast} \boldsymbol{p}^{W} \tilde{\boldsymbol{q}}\\
+    &= \left(q_0 - \boldsymbol{q}\right) \boldsymbol{p}^{W} \left(q_0 + \boldsymbol{q}\right)\\
+    &= q_0^2 \boldsymbol{p}^{W} - 2 \left(\boldsymbol{q} \times \boldsymbol{p}^{W}\right) q_0 + \left(\boldsymbol{q} \cdot \boldsymbol{p}^{W}\right) \boldsymbol{q} - \left(\boldsymbol{q} \times \boldsymbol{p}^{W}\right) \times \boldsymbol{q}\\
+    &= q_0^2 \boldsymbol{p}^{W} - 2 \left(\boldsymbol{q} \times \boldsymbol{p}^{W}\right) q_0 + \left(\boldsymbol{q} \cdot \boldsymbol{p}^{W}\right) \boldsymbol{q} + \left(\boldsymbol{q} \cdot \boldsymbol{p}^{W}\right) \boldsymbol{q} - \left(\boldsymbol{q} \cdot \boldsymbol{q}\right) \boldsymbol{p}^{W}\\
+    &= \left(q_0^2 - \boldsymbol{q} \cdot \boldsymbol{q}\right) \boldsymbol{p}^{W} - 2 \left(\boldsymbol{q} \times \boldsymbol{p}^{W}\right) q_0 + 2\left(\boldsymbol{q}^{T} \boldsymbol{p}^{W}\right) \boldsymbol{q}\\
+    &= \left(q_0^2 - \boldsymbol{q} \cdot \boldsymbol{q}\right) \boldsymbol{p}^{W} - 2 q_0 \left(\boldsymbol{q} \times \boldsymbol{p}^{W}\right) + 2 \boldsymbol{q} \left(\boldsymbol{q}^{T} \boldsymbol{p}^{W}\right)\\
+    &= \left(q_0^2 - \boldsymbol{q} \cdot \boldsymbol{q}\right) \boldsymbol{E} \boldsymbol{p}^{W} - 2q_0 [\boldsymbol{q}]_{\times} \boldsymbol{p}^{W} + 2 \boldsymbol{q} \boldsymbol{q}^{T} \boldsymbol{p}^{W}\\
+    &= \left\{\left(q_0^2 - \boldsymbol{q} \cdot \boldsymbol{q}\right) \boldsymbol{E} - 2q_0 [\boldsymbol{q}]_{\times} + 2 \boldsymbol{q} \boldsymbol{q}^{T}\right\} \boldsymbol{p}^{W}\\
+    &= \begin{pmatrix}
+      q_0^2+q_1^2-q_2^2-q_3^2 & 2\left(q_0 q_3 + q_1 q_2\right) & 2\left(- q_0 q_2 + q_1 q_3\right)\\
+      2\left(- q_0 q_3 + q_2 q_1\right) & q_0^2-q_1^2+q_2^2-q_3^2 & 2\left(q_0 q_1 + q_2 q_3\right)\\
+      2\left(q_0 q_2 + q_3 q_1\right) & 2\left(- q_0 q_1 + q_3 q_2\right) & q_0^2-q_1^2-q_2^2+q_3^2
+    \end{pmatrix}
+    \boldsymbol{p}^{W}
+  \end{align}
+}
+となるので，
+\begin{equation}
+  {}^{W}_{A}\boldsymbol{R} =
+  {\tiny
+    \begin{pmatrix}
+      q_0^2+q_1^2-q_2^2-q_3^2 & 2\left(- q_0 q_3 + q_2 q_1\right) & 2\left(q_0 q_2 + q_3 q_1\right)\\
+      2\left(q_0 q_3 + q_1 q_2\right) & q_0^2-q_1^2+q_2^2-q_3^2 & 2\left(- q_0 q_1 + q_3 q_2\right)\\
+      2\left(- q_0 q_2 + q_1 q_3\right) & 2\left(q_0 q_1 + q_2 q_3\right) & q_0^2-q_1^2-q_2^2+q_3^2
+    \end{pmatrix}
+  }
+\end{equation}
+となる．
+\autoref{eq:DCM}の
+\begin{equation}
+  {}^{W}_{A}\boldsymbol{R} = {\tiny \begin{pmatrix}
+      \cos \beta \cos \gamma & \sin \alpha \sin \beta \cos \gamma - \cos \alpha \sin \gamma & \cos \alpha \sin \beta \cos \gamma + \sin \alpha \sin \gamma \\
+      \cos \beta \sin \gamma & \sin \alpha \sin \beta \sin \gamma + \cos \alpha \cos \gamma & \cos \alpha \sin \beta \sin \gamma - \sin \alpha \cos \gamma \\
+      -\sin \beta & \sin \alpha \cos \beta & \cos \alpha \cos \beta
+  \end{pmatrix}}
+\end{equation}
+と比較して，いいとこ取りをすると
+\begin{align}
+  \cos \beta \cos \gamma &= q_0^2+q_1^2-q_2^2-q_3^2\\
+  \cos \beta \sin \gamma &= 2\left(q_0 q_3 + q_1 q_2\right)\\
+  -\sin \beta &= 2\left(- q_0 q_2 + q_1 q_3\right)\\
+  \sin \alpha \cos \beta &= 2\left(q_0 q_1 + q_2 q_3\right)\\
+  \cos \alpha \cos \beta &= q_0^2-q_1^2-q_2^2+q_3^2
+\end{align}
+なので，
+\begin{equation}
+  \begin{pmatrix}
+    \alpha\\
+    \beta\\
+    \gamma
+  \end{pmatrix} =
+  \begin{pmatrix}
+    \arctan \frac{2\left(q_0 q_1 + q_2 q_3\right)}{q_0^2-q_1^2-q_2^2+q_3^2}\\
+    \arcsin \left\{-2\left(- q_0 q_2 + q_1 q_3\right)\right\}\\
+    \arctan \frac{2\left(q_0 q_3 + q_1 q_2\right)}{q_0^2+q_1^2-q_2^2-q_3^2}
+  \end{pmatrix}
+\end{equation}
+
+ちなみに，クォータニオンとオイラー角は \url{https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles}より
+\begin{align}
+  {}^{W}_{A}\boldsymbol{R} &= \boldsymbol{R}_{z}(\gamma) \boldsymbol{R}_{y}(\beta) \boldsymbol{R}_{x}(\alpha)\\
+  &=
+  \begin{pmatrix}
+    \cos \frac{\gamma}{2}\\
+    0\\
+    0\\
+    \sin \frac{\gamma}{2}
+  \end{pmatrix}
+  \begin{pmatrix}
+    \cos \frac{\beta}{2}\\
+    0\\
+    \sin \frac{\beta}{2}\\
+    0
+  \end{pmatrix}
+  \begin{pmatrix}
+    \cos \frac{\alpha}{2}\\
+    \sin \frac{\alpha}{2}\\
+    0\\
+    0
+  \end{pmatrix}\\
+  &=
+  \begin{pmatrix}
+    \cos \frac{\alpha}{2} \cos \frac{\beta}{2} \cos \frac{\gamma}{2} + \sin \frac{\alpha}{2} \sin \frac{\beta}{2} \sin \frac{\gamma}{2}\\
+         {\color{red} \sin \frac{\alpha}{2}} \cos \frac{\beta}{2} \cos \frac{\gamma}{2} - {\color{red} \cos \frac{\alpha}{2}} \sin \frac{\beta}{2} \sin \frac{\gamma}{2}\\
+         \cos \frac{\alpha}{2} {\color{red} \sin \frac{\beta}{2}} \cos \frac{\gamma}{2} + \sin \frac{\alpha}{2} {\color{red} \cos \frac{\beta}{2}} \sin \frac{\gamma}{2}\\
+         \cos \frac{\alpha}{2} \cos \frac{\beta}{2} {\color{red} \sin \frac{\gamma}{2}} - \sin \frac{\alpha}{2} \sin \frac{\beta}{2} {\color{red} \cos \frac{\gamma}{2}}
+  \end{pmatrix}
+\end{align}
+
+wikipediaの式を写しただけで，検算はしていない．
