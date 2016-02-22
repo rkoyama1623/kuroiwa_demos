@@ -126,7 +126,7 @@ Predicted state estimateは
   & \left.
   \begin{array}{ccc}
      \tmpbibun{1} &  \tmpbibun{2} &  \tmpbibun{3}\\
-    -\tmpbibun{0} &  \tmpbibun{3} & -\tmpbibun{3}\\
+    -\tmpbibun{0} &  \tmpbibun{3} & -\tmpbibun{2}\\
     -\tmpbibun{3} & -\tmpbibun{0} &  \tmpbibun{1}\\
      \tmpbibun{2} & -\tmpbibun{1} & -\tmpbibun{0}\\
      1 & 0 & 0\\
@@ -342,6 +342,58 @@ $\boldsymbol{H}_{k+1}$経由で次のサイクルから入る．
 \end{align}
 となるので，対角行列ではないっぽい．
 
+ところで，$\boldsymbol{Q}$と$\boldsymbol{R}$の決め方としては，やはりセンサの信頼度を入れるのが正解っぽい．
+$\boldsymbol{R}$はそのままセンサの分散を入れれば良いが，$\boldsymbol{Q}$が問題．
+一説によると
+\begin{align}
+  \boldsymbol{V}_{k+1} &= \frac{\partial f}{\partial \boldsymbol{u}_{k+1}}\\
+  \boldsymbol{Q}_{k+1} &=
+  \boldsymbol{V}_{k+1}
+  \begin{pmatrix}
+    \sigma_{\omega_x}^2 & 0 & 0\\
+    0 & \sigma_{\omega_y}^2 & 0\\
+    0 & 0 & \sigma_{\omega_x}^2
+  \end{pmatrix}
+  \boldsymbol{V}_{k+1}^{T}\\
+  \boldsymbol{R}_{k+1} &=
+  \begin{pmatrix}
+    \sigma_{acc_x}^2 & 0 & 0\\
+    0 & \sigma_{acc_y}^2 & 0\\
+    0 & 0 & \sigma_{acc_x}^2
+  \end{pmatrix}
+\end{align}
+とするのが良い？
+こうすると，$\boldsymbol{Q}$の右下は$\boldsymbol{O}$になる．
+
+\begin{align}
+  \boldsymbol{V}_{k+1} &= \frac{\partial f}{\partial \boldsymbol{u}_{k+1}}\\
+  &=
+  \begin{pmatrix}
+    -\tmpbibun{1} & -\tmpbibun{2} & -\tmpbibun{3}\\
+     \tmpbibun{0} & -\tmpbibun{3} &  \tmpbibun{2}\\
+     \tmpbibun{3} &  \tmpbibun{0} & -\tmpbibun{1}\\
+    -\tmpbibun{2} &  \tmpbibun{1} &  \tmpbibun{0}\\
+    0 & 0 & 0\\
+    0 & 0 & 0\\
+    0 & 0 & 0
+  \end{pmatrix}\\
+  &=
+  \begin{pmatrix}
+    \boldsymbol{V}_{k+1}^{upper}\\
+    \boldsymbol{O}
+  \end{pmatrix}\\
+  \boldsymbol{Q}_{k+1}
+  &=
+  \boldsymbol{V}_{k+1}
+  \boldsymbol{\Sigma}_{\boldsymbol{\omega}}
+  \boldsymbol{V}_{k+1}^{T}\\
+  &=
+  \begin{pmatrix}
+    \boldsymbol{V}_{k+1}^{upper} \boldsymbol{\Sigma}_{\boldsymbol{\omega}} {\boldsymbol{V}_{k+1}^{upper}}^{T} & \boldsymbol{O}\\
+    \boldsymbol{O} & \boldsymbol{O}
+  \end{pmatrix}
+\end{align}
+
 \subsection{autopilotの実装}
 \url{http://autopilot.sourceforge.net/kalman.html}がwebページでは紹介されているけど，実装はもっと別のことをしているっぽい．
 ジャイロが2つしかついていないっぽいのと，$C$の計算が謎い．
@@ -376,3 +428,53 @@ $\boldsymbol{H}_{k+1}$経由で次のサイクルから入る．
   \end{pmatrix}
   \tilde{\boldsymbol{q}}_{k}^{+}
 \end{align}
+
+\subsection{Discrete-time extended Kalman filter}
+\url{https://en.wikipedia.org/wiki/Extended_Kalman_filter#Discrete-time_extended_Kalman_filter} によると，わざわざ自分で離散系に直さなくても良いらしい．
+
+\begin{align}
+  \dot{\boldsymbol{x}}_{t}
+  &=
+  f(\boldsymbol{x}_{t}, \boldsymbol{u}_{t})\\
+  &=
+  \begin{pmatrix}
+    \dot{\tilde{\boldsymbol{q}}}_{t}\\
+    \dot{\boldsymbol{b}}_{\boldsymbol{\omega}_t}
+  \end{pmatrix}\\
+  &=
+  \begin{pmatrix}
+    \frac{1}{2}
+    \boldsymbol{\Omega}(\boldsymbol{\omega}_t - \boldsymbol{b}_{\boldsymbol{\omega}_t})
+    \tilde{\boldsymbol{q}}_{t}\\
+    0\\
+    0\\
+    0
+  \end{pmatrix}
+\end{align}
+より
+\begin{align}
+  \boldsymbol{F}_{t}
+  &=
+  \left. \frac{\partial f}{\partial \boldsymbol{x}}\right|_{\boldsymbol{x}_{t}, \boldsymbol{u}_{t}}\\
+  &=
+  \begin{pmatrix}
+    \multicolumn{4}{c}{\multirow{4}{*}{$\frac{1}{2} \boldsymbol{\Omega}(\boldsymbol{\omega}_t - \boldsymbol{b}_{\boldsymbol{\omega}_t})$}} &  \frac{q_1}{2} &  \frac{q_2}{2} & \frac{q_3}{2}\\
+    \multicolumn{4}{c}{} & -\frac{q_0}{2} &  \frac{q_3}{2} & -\frac{q_2}{2}\\
+    \multicolumn{4}{c}{} & -\frac{q_3}{2} & -\frac{q_0}{2} &  \frac{q_1}{2}\\
+    \multicolumn{4}{c}{} &  \frac{q_2}{2} & -\frac{q_1}{2} &  \frac{q_0}{2}\\
+    \multicolumn{7}{c}{\multirow{3}{*}{$\boldsymbol{O}$}}\\
+    \multicolumn{7}{c}{}\\
+    \multicolumn{7}{c}{}
+  \end{pmatrix}
+\end{align}
+となって
+\begin{equation}
+  \dot{\boldsymbol{P}}_{t} = \boldsymbol{F}_{t} \boldsymbol{P}_{t} + \boldsymbol{P}_{t} \boldsymbol{F}_{t}^{T} + \boldsymbol{Q}_{t}
+\end{equation}
+
+これは結局普通のEKFとほぼ同じなんだけど，
+\begin{itemize}
+  \item $(\Delta t)^2$の項が消えている
+  \item $Q$が微分の式にかける
+\end{itemize}
+なので，こちらの方が効率良さそう．
