@@ -779,6 +779,9 @@ IMUが観測するのはlocal座標で表された角速度なので，
   \end{pmatrix}
 \end{equation}
 
+これは解の一つを見つけただけであって，唯一の解ではない．
+本当はもう一つある．オイラー角は一意には決まらない．
+
 ちなみに，クォータニオンとオイラー角は \url{https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles}より
 \begin{align}
   {}^{W}_{A}\boldsymbol{R} &= \boldsymbol{R}_{z}(\gamma) \boldsymbol{R}_{y}(\beta) \boldsymbol{R}_{x}(\alpha)\\
