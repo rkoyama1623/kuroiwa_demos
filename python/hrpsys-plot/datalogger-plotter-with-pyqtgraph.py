@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import csv, argparse, numpy, math, time, struct, yaml, sys, functools
+import csv, argparse, numpy, math, time, struct, yaml, sys, functools, itertools
 
 try:
     import pyqtgraph
@@ -160,7 +160,7 @@ class DataloggerLogParserController:
     def readData(self, xmin, xmax):
         print '[%f] : start readData' % (time.time() - start_time)
         # store data
-        topic_list = list(set(reduce(lambda x, y : x + y, [sum(x["arg"],[]) for x in self.plot_dic.values()])))
+        topic_list = list(set(reduce(lambda x, y : x + y, [list(itertools.chain.from_iterable(x["arg"])) for x in self.plot_dic.values()])))
         tmpDataListDict = {}
         for topic in topic_list:
             self.dataListDict[topic] = [[]] # first list is for time
