@@ -1,20 +1,19 @@
 "right_foot_force":
-  "arg": [['rmfo_off_rfsensor'], ['st_allRefWrench']]
-  "index": [[ [[]] ], [ [[6,7,8,9,10,11]] ]]
+  "log": ['rmfo_off_rfsensor']
   "field": [[0,1,2,3,4,5]]
 
 "left_foot_force":
-  "arg": [['rmfo_off_lfsensor'], ['st_allRefWrench']]
+  "log": ['rmfo_off_lfsensor', 'st_allRefWrench']
   "field": [[0,1,2,3,4,5]]
 
 "RefWrench":
-  "arg": [['st_allRefWrench']]
+  "log": ['st_allRefWrench']
   "field": [[6, 7, 8, 9, 10, 11]]
 
 "comp":
-  "arg": [['st_allEEComp']]
+  "log": ['st_allEEComp']
   "field": [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]]
 
 "contactStates":
-  "arg": [['abc_contactStates'], ['abc_controlSwingSupportTime']]
+  "log": ['abc_contactStates', 'abc_controlSwingSupportTime']
   "field": [[0], [1]]
