@@ -94,7 +94,7 @@ class DataloggerLogParserController:
                             cur_plot_item.setLabel("left", text="", units=tmp_units)
                             # cur_plot_item.enableAutoSIPrefix(False)
                         if cl == 'RobotHardware0_servoState':
-                            urata_len = 13
+                            urata_len = 16
                             if plot[0] == "12V":
                                 cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (9+1)][::mabiki], pen=pyqtgraph.mkPen('r', width=2), name='12V')
                             elif plot[0] == "80V":
@@ -108,7 +108,7 @@ class DataloggerLogParserController:
                                 cur_plot_item.plot(cur_tm, [math.degrees(x) for x in cur_data[:, (urata_len+1) * cur_col + (6+1)][::mabiki]], pen=pyqtgraph.mkPen('g', width=2), name='abs - enc')
                         elif plot[0] == "tracking":
                             if cl == "RobotHardware0_q":
-                                cur_plot_item.plot(cur_tm, [math.degrees(x) for x in numpy.array(self.dataListDict['st_q'][1:])[:, cur_col][::mabiki] - cur_data[:, cur_col][::mabiki]], pen=pyqtgraph.mkPen('r', width=2), name="st_q - rh_q")
+                                cur_plot_item.plot(cur_tm, [math.degrees(x) for x in numpy.array(self.dataListDict['el_q'][1:])[:, cur_col][::mabiki] - cur_data[:, cur_col][::mabiki]], pen=pyqtgraph.mkPen('r', width=2), name="el_q - rh_q")
                             else:
                                 pass
                         elif plot[0] == "joint_angle" or plot[0] == "joint_velocity" or plot[0] == "attitude":
