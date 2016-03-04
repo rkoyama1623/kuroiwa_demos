@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 
-import csv, argparse, numpy, math, time, struct, yaml, sys
+import argparse
+import csv
+import functools
+import math
+import multiprocessing
+import numpy
+import struct
+import sys
+import time
+import yaml
 
 try:
     import pyqtgraph
@@ -8,157 +17,240 @@ except:
     print "please install pyqtgraph. see http://www.pyqtgraph.org/"
     sys.exit(1)
 
+
+# decorator for time measurement
+def my_time(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        result = func(*args, **kwargs)
+        print('{0:>10} : {1:3.3f} [s]'.format(func.func_name,
+                                              time.time() - start))
+        return result
+    return wrapper
+
+
+# seems that we should declare global function for multiprocess
+def readOneTopic(fname):
+    tmp = []
+    with open(fname, 'r') as f:
+        reader = csv.reader(f, delimiter=' ')
+        for row in reader:
+            dl = filter(lambda x: x != '', row)
+            tmp.append([float(x) for x in dl])
+    return numpy.array(tmp)
+
+
 class DataloggerLogParserController:
     def __init__(self, fname, yname, title):
         self.fname = fname
         with open(yname, "r") as f:
             self.plot_dic = yaml.load(f)
-        # self.dataListDict = {'time':[]}
-        self.dataListDict = {}
-        self.app = pyqtgraph.Qt.QtGui.QApplication([])
+        # setup view
         self.view = pyqtgraph.GraphicsLayoutWidget()
         self.view.setBackground('w')
-        if title == '':
-            self.view.setWindowTitle(fname.split('/')[-1])
-        else:
-            self.view.setWindowTitle(title)
-        self.items = []
-        self.row_num = sum([len(x[1]["field"]) for x in self.plot_dic.items()])
-        self.col_num = max([max([len(fld) for fld in x[1]["field"]]) for x in self.plot_dic.items()])
-        for r in range(self.row_num):
-            self.items.append([])
-            for c in range(self.col_num):
-                if c == 0:
-                    p = self.view.addPlot(row=r, col=c, name='r'+str(r)+'c'+str(c))
-                else:
-                    p = self.view.addPlot(row=r, col=c)
-                p.setXLink('r0c0')
-                self.items[r].append(p)
+        self.view.setWindowTitle(title if title else fname.split('/')[-1])
+        # self.dateListDict is set by self.readData()
+        self.dataListDict = {}
 
-    def readData(self, xmin, xmax):
-        print '[%f] : start readData' % (time.time() - start_time)
-        # store data
-        topic_list = list(set(reduce(lambda x, y : x + y, [x[1]["log"] for x in self.plot_dic.items()])))
-        for topic in topic_list:
-            self.dataListDict[topic] = [[]] # first list is for time
-            with open(self.fname + '.' + topic, 'r') as f:
-                reader = csv.reader(f, delimiter=' ')
-                for row in reader:
-                    self.dataListDict[topic][0].append(float(row[0]))
-                    dl = row[1:]
-                    dl = filter(lambda x: x != '', dl)
-                    self.dataListDict[topic].append([float(x) for x in dl])
+    @my_time
+    def readData(self):
+        '''
+        read log data from log files and store dataListDict
+        # self.dataListDict[topic] = numpy.array([[t_0, x_0, y_0, ...],
+        #                                         [t_1, x_1, y_1, ...],
+        #                                         ...,
+        #                                         [t_n, x_n, y_n, ...]])
+        '''
+        log_list_list = [x[1]["log"] for x in self.plot_dic.items()]
+        duplicated_list = reduce(lambda x, y: x + y, log_list_list)
+        topic_list = list(set(duplicated_list))
+        # store data in parallel
+        fname_list = [self.fname+'.'+tpc for tpc in topic_list]
+        pl = multiprocessing.Pool()
+        data_list = pl.map(readOneTopic, fname_list)
+        for tpc, data in zip(topic_list, data_list):
+            self.dataListDict[tpc] = data
         # set the fastest time as 0
-        min_time = min([self.dataListDict[topic][0][0] for topic in topic_list])
-        for topic in topic_list:
-            self.dataListDict[topic][0] = [x - min_time for x in self.dataListDict[topic][0]]
+        min_time = min([self.dataListDict[tpc][0][0] for tpc in topic_list])
+        for tpc in topic_list:
+            raw_time = self.dataListDict[tpc][:, 0]
+            self.dataListDict[tpc][:, 0] = [x - min_time for x in raw_time]
         # fix servoState
         if 'RobotHardware0_servoState' in topic_list:
-            ss_tmp = self.dataListDict['RobotHardware0_servoState'][1:]
-            for i, ssl in enumerate(ss_tmp):
-                ss_tmp[i] = [struct.unpack('f', struct.pack('i', int(ss)))[0] for ss in ssl]
-            self.dataListDict['RobotHardware0_servoState'][1:] = ss_tmp
-        print '[%f] : finish readData' % (time.time() - start_time)
+            def ssConverter(x):
+                return struct.unpack('f', struct.pack('i', int(x)))[0]
+            vf = numpy.vectorize(ssConverter)
+            ss_tmp = self.dataListDict['RobotHardware0_servoState'][:, 1:]
+            self.dataListDict['RobotHardware0_servoState'][:, 1:] = vf(ss_tmp)
 
-    def plotData(self, mabiki):
-        print '[%f] : start plotData' % (time.time() - start_time)
-        # tm = self.dataListDict['time'][::mabiki]
-        color_list = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+    @my_time
+    def setLayout(self):
+        '''
+        set layout of view according to self.plot_dic
+        '''
+        row = 0
+        for x in self.plot_dic.items():
+            for fld in x[1]["field"]:
+                for c in range(len(fld)):
+                    self.view.addPlot()
+                self.view.nextRow()
+                row += 1
+
+    @my_time
+    def plotData(self):
+        '''
+        plot
+        '''
+        color_list = pyqtgraph.functions.Colors.keys()
         cur_row = 0
         for plot in self.plot_dic.items(): # plot : ('joint_velocity', {'field':[[0,1],[2,3]], 'log':['rh_q', 'st_q']})
-            cur_fields = plot[1]['field']
-            cur_logs = plot[1]['log']
-            for cf in cur_fields: # cf : [0,1] -> [2,3]
-                for i, cl in enumerate(cur_logs): # cl : 'rh_q' -> 'st_q'
-                    cur_data = numpy.array(self.dataListDict[cl][1:])
-                    cur_tm = numpy.array(self.dataListDict[cl][0])
-                    for cur_col in cf:
-                        cur_plot_item = self.items[cur_row][cur_col-cf[0]]
-                        cur_plot_item.setTitle(plot[0]+" "+str(cur_col))
-                        cur_plot_item.showGrid(x=True, y=True)
-                        cur_plot_item.addLegend(offset=(0, 0))
-                        if cur_row == self.row_num -1:
-                            cur_plot_item.setLabel("bottom", text="time", units="s")
-                        if cur_col-cf[0] == 0:
-                            tmp_units = None
-                            if plot[0] == "12V" or plot[0] == "80V":
-                                tmp_units = "V"
-                            elif plot[0] == "current":
-                                tmp_units = "A"
-                            elif plot[0] == "temperature" or plot[0] == "joint_angle" or plot[0] == "attitude" or plot[0] == "tracking":
-                                tmp_units = "deg"
-                            elif plot[0] == "joint_velocity":
-                                tmp_units = "deg/s"
-                            elif plot[0] == "watt":
-                                tmp_units = "W"
-                            cur_plot_item.setLabel("left", text="", units=tmp_units)
-                            # cur_plot_item.enableAutoSIPrefix(False)
+            title = plot[0]
+            cur_fields = plot[1]['field']  # [[0,1],[2,3]]
+            cur_logs = plot[1]['log']      # ['rh_q', 'st_q']
+            for cf in cur_fields: # cf : [0,1]
+                for i, cl in enumerate(cur_logs): # cl : 'rh_q'
+                    cur_data = self.dataListDict[cl][:, 1:]
+                    cur_tm = self.dataListDict[cl][:, 0]
+                    for cur_col in cf: # cur_col : 0 / 1 / 2 / 3 ...
+                        cur_item = self.view.ci.rows[cur_row][cur_col-cf[0]]
+                        cur_item.setTitle(title+" "+str(cur_col))
+                        cur_item.showGrid(x=True, y=True)
+                        if i == 0: # we should call addLegend once a plot item
+                            cur_item.addLegend(offset=(0, 0))
+                        # plot
                         if cl == 'RobotHardware0_servoState':
                             urata_len = 16
-                            if plot[0] == "12V":
-                                cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (9+1)][::mabiki], pen=pyqtgraph.mkPen('r', width=2), name='12V')
-                            elif plot[0] == "80V":
-                                cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (2+1)][::mabiki], pen=pyqtgraph.mkPen('g', width=2), name='80V')
-                            elif plot[0] == "current":
-                                cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (1+1)][::mabiki], pen=pyqtgraph.mkPen('b', width=2), name='current')
-                            elif plot[0] == "temperature":
-                                cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (0+1)][::mabiki], pen=pyqtgraph.mkPen('r', width=2), name='motor_temp')
-                                cur_plot_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (7+1)][::mabiki], pen=pyqtgraph.mkPen('g', width=1), name='motor_outer_temp')
-                            elif plot[0] == "tracking":
-                                cur_plot_item.plot(cur_tm, [math.degrees(x) for x in cur_data[:, (urata_len+1) * cur_col + (6+1)][::mabiki]], pen=pyqtgraph.mkPen('g', width=2), name='abs - enc')
-                        elif plot[0] == "tracking":
+                            if title == "12V":
+                                cur_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (9+1)],
+                                              pen=pyqtgraph.mkPen('r', width=2), name='12V')
+                            elif title == "80V":
+                                cur_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (2+1)],
+                                              pen=pyqtgraph.mkPen('g', width=2), name='80V')
+                            elif title == "current":
+                                cur_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (1+1)],
+                                              pen=pyqtgraph.mkPen('b', width=2), name='current')
+                            elif title == "temperature":
+                                cur_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (0+1)],
+                                              pen=pyqtgraph.mkPen('r', width=2), name='motor_temp')
+                                cur_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (7+1)],
+                                              pen=pyqtgraph.mkPen('g', width=1), name='motor_outer_temp')
+                            elif title == "tracking":
+                                cur_item.plot(cur_tm, [math.degrees(x) for x in cur_data[:, (urata_len+1) * cur_col + (6+1)]],
+                                              pen=pyqtgraph.mkPen('g', width=2), name='abs - enc')
+                        elif title == "tracking":
                             if cl == "RobotHardware0_q":
-                                cur_plot_item.plot(cur_tm, [math.degrees(x) for x in numpy.array(self.dataListDict['el_q'][1:])[:, cur_col][::mabiki] - cur_data[:, cur_col][::mabiki]], pen=pyqtgraph.mkPen('r', width=2), name="el_q - rh_q")
+                                cur_item.plot(cur_tm, [math.degrees(x) for x in (self.dataListDict['st_q'][:, 1:][:, cur_col] - cur_data[:, cur_col])],
+                                              pen=pyqtgraph.mkPen('r', width=2), name="st_q - rh_q")
                             else:
                                 pass
-                        elif plot[0] == "joint_angle" or plot[0] == "joint_velocity" or plot[0] == "attitude":
-                            cur_plot_item.plot(cur_tm, [math.degrees(x) for x in cur_data[:, cur_col][::mabiki]], pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl)
-                        elif plot[0] == "watt":
+                        elif title == "joint_angle" or title == "joint_velocity" or title == "attitude":
+                            cur_item.plot(cur_tm, [math.degrees(x) for x in cur_data[:, cur_col]],
+                                          pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl)
+                        elif title == "watt":
                             if cl == "RobotHardware0_dq":
-                                cur_plot_item.plot(cur_tm, [math.degrees(x) for x in numpy.array(self.dataListDict['RobotHardware0_tau'][1:])[:, cur_col][::mabiki] * cur_data[:, cur_col][::mabiki]], pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl, fillLevel=0, fillBrush=color_list[i])
+                                cur_item.plot(cur_tm, [math.degrees(x) for x in self.dataListDict['RobotHardware0_tau'][:, (cur_col+1):] * cur_data[:, cur_col]],
+                                              pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl, fillLevel=0, fillBrush=color_list[i])
                             else:
                                 pass
-                        elif plot[0] == "imu":
+                        elif title == "imu":
+                            mod3 = cur_col % 3
                             if cl == 'RobotHardware0_gsensor':
-                                self.items[cur_row][0].plot(cur_tm, cur_data[:, cur_col][::mabiki], pen=pyqtgraph.mkPen(color_list[cur_col%3], width=3-cur_col%3), name=['x', 'y', 'z'][cur_col%3])
+                                self.view.ci.rows[cur_row][0].plot(cur_tm, cur_data[:, cur_col],
+                                                                   pen=pyqtgraph.mkPen(color_list[mod3], width=3-mod3), name=['x', 'y', 'z'][mod3])
                             elif cl == 'RobotHardware0_gyrometer':
-                                self.items[cur_row][1].plot(cur_tm, cur_data[:, cur_col][::mabiki], pen=pyqtgraph.mkPen(color_list[cur_col%3], width=3-cur_col%3), name=['x', 'y', 'z'][cur_col%3])
-                        elif plot[0] == "comp":
-                            cur_plot_item.plot(cur_tm, cur_data[:, cur_col][::mabiki], pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl)
+                                self.view.ci.rows[cur_row][1].plot(cur_tm, cur_data[:, cur_col],
+                                                                   pen=pyqtgraph.mkPen(color_list[mod3], width=3-mod3), name=['x', 'y', 'z'][mod3])
+                        elif title == "comp":
+                            cur_item.plot(cur_tm, cur_data[:, cur_col],
+                                          pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl)
                             if cur_col % 6 < 3: # position
-                                cur_plot_item.setYRange(-0.025, +0.025) # compensation limit
+                                cur_item.setYRange(-0.025, +0.025) # compensation limit
                             else: # rotation
-                                cur_plot_item.setYRange(math.radians(-10), math.radians(+10)) # compensation limit
+                                cur_item.setYRange(math.radians(-10), math.radians(+10)) # compensation limit
                         else:
-                            cur_plot_item.plot(cur_tm, cur_data[:, cur_col][::mabiki], pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl)
-                # calculate y range of each rows using autofit function and then link y range each row
-                y_min = min([p.viewRange()[1][0] for p in self.items[cur_row]])
-                y_max = max([p.viewRange()[1][1] for p in self.items[cur_row]])
-                if plot[0] != "joint_angle" and plot[0].find("_force") == -1 and plot[0] != "imu" and plot[0] != "comp":
-                    self.items[cur_row][0].setYRange(y_min, y_max)
-                    for p in self.items[cur_row]:
-                        p.setYLink('r'+str(cur_row)+'c0')
+                            cur_item.plot(cur_tm, cur_data[:, cur_col],
+                                          pen=pyqtgraph.mkPen(color_list[i], width=len(cur_logs)-i), name=cl)
                 # increase current row
                 cur_row = cur_row + 1
-        self.view.showMaximized()
-        print '[%f] : finish plotData' % (time.time() - start_time)
 
-if __name__  == '__main__':
+    @my_time
+    def setLabel(self):
+        '''
+        set label: time for bottom plots, unit for left plots
+        '''
+        row_num = len(self.view.ci.rows)
+        # left plot items
+        for i in range(row_num):
+            cur_item = self.view.ci.rows[i][0]
+            title = cur_item.titleLabel.text
+            tmp_units = None
+            if ("12V" in title) or ("80V" in title):
+                tmp_units = "V"
+            elif "current" in title:
+                tmp_units = "A"
+            elif ("temperature" in title) or ("joint_angle" in title) or ("attitude" in title) or ("tracking" in title):
+                tmp_units = "deg"
+            elif ("joint_velocity" in title):
+                tmp_units = "deg/s"
+            elif ("watt" in title):
+                tmp_units = "W"
+            cur_item.setLabel("left", text="", units=tmp_units)
+            # we need this to suppress si-prefix until https://github.com/pyqtgraph/pyqtgraph/pull/293 is merged
+            for ax in cur_item.axes.values():
+                ax['item'].enableAutoSIPrefix(enable=False)
+                ax['item'].autoSIPrefixScale = 1.0
+                ax['item'].labelUnitPrefix = ''
+                ax['item'].setLabel()
+        # bottom plot items
+        col_num = len(self.view.ci.rows[row_num-1])
+        for i in range(col_num):
+            cur_item = self.view.ci.rows[row_num-1][i]
+            cur_item.setLabel("bottom", text="time", units="s")
+
+    @my_time
+    def linkAxes(self):
+        '''
+        link all X axes and some Y axes
+        '''
+        # X axis
+        all_items = self.view.ci.items.keys()
+        target_item = all_items[0]
+        for i, p in enumerate(all_items):
+            if i != 0:
+                p.setXLink(target_item)
+            else:
+                p.enableAutoRange()
+        # Y axis
+        for cur_row_dict in self.view.ci.rows.values():
+            all_items = cur_row_dict.values()
+            target_item = all_items[0]
+            title = target_item.titleLabel.text
+            if title != "joint_angle" and title.find("_force") == -1 and title != "imu" and title != "comp":
+                y_min = min([ci.viewRange()[1][0] for ci in all_items])
+                y_max = max([ci.viewRange()[1][1] for ci in all_items])
+                target_item.setYRange(y_min, y_max)
+                for i, p in enumerate(all_items):
+                    if i != 0:
+                        p.setYLink(target_item)
+
+if __name__ == '__main__':
     # time
     start_time = time.time()
-    print '[%f] : start !!!' % (time.time() - start_time)
     # args
     parser = argparse.ArgumentParser(description='plot data from hrpsys log')
     parser.add_argument('-f', type=str, help='input file', metavar='file', required=True)
     parser.add_argument('--conf', type=str, help='configure file', metavar='file', required=True)
-    parser.add_argument('--min_time', type=float, help='xmin for graph : not implemented yet', default=0.0)
-    parser.add_argument('--max_time', type=float, help='xmax for graph : not implemented yet', default=0.0)
-    parser.add_argument('-t', type=str, help='title', default="")
-    parser.add_argument('--mabiki', type=int, help='mabiki step', default=1)
+    parser.add_argument('-t', type=str, help='title', default=None)
     parser.set_defaults(feature=False)
     args = parser.parse_args()
     # main
+    app = pyqtgraph.Qt.QtGui.QApplication([])
     a = DataloggerLogParserController(args.f, args.conf, args.t)
-    a.readData(args.min_time, args.max_time)
-    a.plotData(args.mabiki)
+    a.readData()
+    a.setLayout()
+    a.plotData()
+    a.setLabel()
+    a.linkAxes()
+    a.view.showMaximized()
     pyqtgraph.Qt.QtGui.QApplication.instance().exec_()
