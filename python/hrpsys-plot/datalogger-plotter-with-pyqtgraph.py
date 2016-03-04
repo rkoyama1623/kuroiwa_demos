@@ -294,8 +294,6 @@ class DataloggerLogParserController:
         self.view.showMaximized()
 
 if __name__ == '__main__':
-    # time
-    start_time = time.time()
     # args
     parser = argparse.ArgumentParser(description='plot data from hrpsys log')
     parser.add_argument('-f', type=str, help='input file', metavar='file', required=True)
