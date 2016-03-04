@@ -52,6 +52,8 @@ class DataloggerLogParserController:
         self.view.setWindowTitle(title if title else fname.split('/')[-1])
         # self.dateListDict is set by self.readData()
         self.dataListDict = {}
+        # back up for plot items
+        self.plotItemOrig = {}
 
     @my_time
     def readData(self):
@@ -234,6 +236,45 @@ class DataloggerLogParserController:
                     if i != 0:
                         p.setYLink(target_item)
 
+    @my_time
+    def customMenu(self):
+        '''
+        customize right-click context menu
+        '''
+        self.plotItemOrig = self.view.ci.items.copy()
+        all_items = self.view.ci.items.keys()
+        for pi in all_items:
+            vb = pi.getViewBox()
+            qa1 = vb.menu.addAction('hide this plot')
+            qa2 = vb.menu.addAction('hide this row')
+            qa3 = vb.menu.addAction('hide this column')
+            qa4 = vb.menu.addAction('restore plots')
+            def hideCB(item):
+                self.view.ci.removeItem(item)
+            def hideRowCB(item):
+                r, _c = self.view.ci.items[item][0]
+                del_list = [self.view.ci.rows[r][c] for c in self.view.ci.rows[r].keys()]
+                for i in del_list:
+                    self.view.ci.removeItem(i)
+            def hideColCB(item):
+                _r, c = self.view.ci.items[item][0]
+                del_list = []
+                row_num = len(self.view.ci.rows)
+                for r in range(row_num):
+                    if c in self.view.ci.rows[r].keys():
+                        del_list.append(self.view.ci.rows[r][c])
+                for i in del_list:
+                    self.view.ci.removeItem(i)
+            def restoreCB():
+                self.view.ci.clear()
+                for key in self.plotItemOrig:
+                    r, c = self.plotItemOrig[key][0]
+                    self.view.ci.addItem(key, row=r, col=c)
+            qa1.triggered.connect(functools.partial(hideCB, pi))
+            qa2.triggered.connect(functools.partial(hideRowCB, pi))
+            qa3.triggered.connect(functools.partial(hideColCB, pi))
+            qa4.triggered.connect(restoreCB)
+
 if __name__ == '__main__':
     # time
     start_time = time.time()
@@ -252,5 +293,6 @@ if __name__ == '__main__':
     a.plotData()
     a.setLabel()
     a.linkAxes()
+    a.customMenu()
     a.view.showMaximized()
     pyqtgraph.Qt.QtGui.QApplication.instance().exec_()
