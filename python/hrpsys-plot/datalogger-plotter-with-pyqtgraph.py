@@ -275,6 +275,24 @@ class DataloggerLogParserController:
             qa3.triggered.connect(functools.partial(hideColCB, pi))
             qa4.triggered.connect(restoreCB)
 
+    def main(self):
+        '''
+        1. read log files
+        2. decide layout
+        3. plot data
+        4. set label
+        5. link axes
+        6. customize context menu
+        7. show
+        '''
+        self.readData()
+        self.setLayout()
+        self.plotData()
+        self.setLabel()
+        self.linkAxes()
+        self.customMenu()
+        self.view.showMaximized()
+
 if __name__ == '__main__':
     # time
     start_time = time.time()
@@ -288,11 +306,5 @@ if __name__ == '__main__':
     # main
     app = pyqtgraph.Qt.QtGui.QApplication([])
     a = DataloggerLogParserController(args.f, args.conf, args.t)
-    a.readData()
-    a.setLayout()
-    a.plotData()
-    a.setLabel()
-    a.linkAxes()
-    a.customMenu()
-    a.view.showMaximized()
+    a.main()
     pyqtgraph.Qt.QtGui.QApplication.instance().exec_()
