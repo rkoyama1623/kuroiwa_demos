@@ -245,10 +245,12 @@ class DataloggerLogParserController:
         all_items = self.view.ci.items.keys()
         for pi in all_items:
             vb = pi.getViewBox()
-            qa1 = vb.menu.addAction('hide this plot')
-            qa2 = vb.menu.addAction('hide this row')
-            qa3 = vb.menu.addAction('hide this column')
+            hm = vb.menu.addMenu('Hide')
+            qa1 = hm.addAction('hide this plot')
+            qa2 = hm.addAction('hide this row')
+            qa3 = hm.addAction('hide this column')
             qa4 = vb.menu.addAction('restore plots')
+            qa5 = hm.addAction('hide except this plot')
             def hideCB(item):
                 self.view.ci.removeItem(item)
             def hideRowCB(item):
@@ -265,6 +267,11 @@ class DataloggerLogParserController:
                         del_list.append(self.view.ci.rows[r][c])
                 for i in del_list:
                     self.view.ci.removeItem(i)
+            def hideExcCB(item):
+                del_list = self.view.ci.items.keys()
+                del_list.remove(item)
+                for i in del_list:
+                    self.view.ci.removeItem(i)
             def restoreCB():
                 self.view.ci.clear()
                 for key in self.plotItemOrig:
@@ -274,6 +281,7 @@ class DataloggerLogParserController:
             qa2.triggered.connect(functools.partial(hideRowCB, pi))
             qa3.triggered.connect(functools.partial(hideColCB, pi))
             qa4.triggered.connect(restoreCB)
+            qa5.triggered.connect(functools.partial(hideExcCB, pi))
 
     def main(self):
         '''
