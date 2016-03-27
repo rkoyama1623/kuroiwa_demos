@@ -228,7 +228,7 @@ class DataloggerLogParserController:
             all_items = cur_row_dict.values()
             target_item = all_items[0]
             title = target_item.titleLabel.text
-            if title != "joint_angle" and title.find("_force") == -1 and title != "imu" and title != "comp":
+            if title.find("joint_angle") == -1 and title.find("_force") == -1 and title != "imu" and title.find("comp") == -1:
                 y_min = min([ci.viewRange()[1][0] for ci in all_items])
                 y_max = max([ci.viewRange()[1][1] for ci in all_items])
                 target_item.setYRange(y_min, y_max)
