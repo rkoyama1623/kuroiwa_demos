@@ -9,12 +9,21 @@
 "joint_angle":
   "log": ['abc_q', 'st_q', 'el_q','RobotHardware0_q']
   "field": [[4], [10]]
-"left_foot_force":
+"right_foot_force":
   "log": ['rmfo_off_rfsensor']
   "field": [[2]]
 "left_foot_force":
-  "log": ['sh_lfsensorOut', 'RobotHardware0_lfsensor', 'rmfo_off_lfsensor']
+  "log": ['rmfo_off_lfsensor']
   "field": [[2]]
+"right_foot_force_My":
+  "log": ['rmfo_off_rfsensor']
+  "field": [[4]]
+"left_foot_force_My":
+  "log": ['rmfo_off_lfsensor']
+  "field": [[4]]
 "contactStates":
   "log": ['abc_contactStates', 'abc_controlSwingSupportTime']
   "field": [[0],[1]]
+"refWrench":
+  "log": ['st_allRefWrench']
+  "field": [[4], [10]]
