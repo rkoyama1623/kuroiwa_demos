@@ -123,6 +123,21 @@ class DataloggerLogParserController:
                         # plot
                         if cl == 'RobotHardware0_servoState':
                             urata_len = 16
+                            if title == "ServoState":
+                                def RePack(x):
+                                    val = struct.unpack('i', struct.pack('f', float(x)))[0]
+                                    #calib = (val & 0x01)
+                                    #servo = (val & 0x02) >> 1
+                                    #power = (val & 0x04) >> 2
+                                    state = (val & 0x0007fff8) >> 3
+                                    #temp  = (val & 0xff000000) >> 24
+                                    return state
+                                vfr = numpy.vectorize(RePack)
+                                cur_item.plot(cur_tm, vfr(cur_data[:, (urata_len+1) * cur_col + (0+0)]),
+                                              pen=pyqtgraph.mkPen('r', width=2), name='ServoState')
+                            if title == "CommNormal":
+                                cur_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (13+1)],
+                                              pen=pyqtgraph.mkPen('r', width=2), name='CommNormal')
                             if title == "12V":
                                 cur_item.plot(cur_tm, cur_data[:, (urata_len+1) * cur_col + (9+1)],
                                               pen=pyqtgraph.mkPen('r', width=2), name='12V')
