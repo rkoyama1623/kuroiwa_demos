@@ -1,6 +1,6 @@
 ## PRMLを読んで学んだことメモ
 
-- 1章
+- [1章](http://nbviewer.jupyter.org/github/eisoku9618/kuroiwa_demos/blob/master/PRML/chapter01.ipynb)
 - 2章
 - 3章
 - 4章
