@@ -46,7 +46,7 @@ mv zz-update-grub.bak zz-update-grub
 ```
 でもろもろ最新にしてから（``/etc/kernel/postinst.d/zz-update-grub``の21行目がUbuntu14.04ではあったのに，Ubuntu16.04ではコメントアウトされていて，そのため文法エラーが出る気がするので，一旦退避させている）
 ```
-aptitude install emacs htop indicator-multiload ipython ipython-notebook byobu ssh xsel git ntp libgnome2-bin texlive-lang-cjk texlive-xetex texlive-fonts-recommended latexmk ibus-mozc
+aptitude install emacs htop indicator-multiload ipython ipython-notebook byobu ssh xsel git ntp libgnome2-bin texlive-lang-cjk texlive-xetex texlive-fonts-recommended latexmk ibus-mozc pdftk inkscape gimp android-tools-adb libav-tools
 aptitude install `check-language-support -l ja`
 im-config -n ibus
 ```
