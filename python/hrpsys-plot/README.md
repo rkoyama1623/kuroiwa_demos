@@ -2,7 +2,11 @@
 
 ##### Left Click
 
+###### Ubuntu earlier than 14.04
 save the following commands as ~/.gnome2/nautilus-scripts/hrpsys-plot.sh and ``chmod +x ~/.gnome2/nautilus-scripts/hrpsys-plot.sh`` and then ``nautilus -q``
+
+###### ubuntu14.04 or above
+save the following commands as ~/.local/share/nautilus/scripts/hrpsys-plot.sh and ``chmod +x ~/.local/share/nautilus/scripts/hrpsys-plot.sh`` and then ``nautilus -q``
 
 ```bash
 #!/bin/bash
@@ -15,7 +19,11 @@ exit
 After you plot all the data, you might think the data are too long and it takes very long time to load them.
 Then, you can trim them as follows.
 
+###### Ubuntu earlier than 14.04
 save the following commands as ~/.gnome2/nautilus-scripts/trim.sh and ``chmod +x ~/.gnome2/nautilus-scripts/trim.sh`` and then ``nautilus -q``
+
+###### ubuntu14.04 or above
+save the following commands as ~/.local/share/nautilus/scripts/trim.sh and ``chmod +x ~/.local/share/nautilus/scripts/trim.sh`` and then ``nautilus -q``
 
 ```bash
 #!/bin/bash
