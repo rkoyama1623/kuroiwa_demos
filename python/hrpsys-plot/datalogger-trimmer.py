@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse, os, glob, subprocess, linecache
+import numpy as np
 
 parser = argparse.ArgumentParser(description='trim log to reduce file size and load time')
 parser.add_argument('-f', type=str, help='input file', metavar='file', required=True)
@@ -8,11 +9,12 @@ parser.add_argument('--min', type=float, help='minimum time', default=0.0)
 parser.add_argument('--max', type=float, help='maximum time', default=None)
 args = parser.parse_args()
 
-with open(os.path.abspath(args.f), 'r') as f:
-    a = float(f.readline().split(' ')[0])
-    b = float(f.readline().split(' ')[0])
-    dt = round(b - a, 3)
-
+# calculate dt from data
+tData=np.loadtxt(args.f)[:,0]
+tData1=tData[:-1]
+tData2=tData[1:]
+dt=round(np.average(tData2-tData1), 3)
+print dt
 
 fl = sum(1 for line in open(os.path.abspath(args.f)))
 duration = fl * dt
