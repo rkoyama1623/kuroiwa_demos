@@ -22,6 +22,7 @@ class MyFileDropTarget(wx.FileDropTarget):
 
     def OnDropFiles(self, x, y, filenames):
         fname = filenames[0]
+        self.window.button_pic.img_path = fname
         self.window.button_pic.img = wx.Image(fname)
         self.window.button_pic.Refresh()
         self.window.text_expl.SetValue(fname)
@@ -117,7 +118,100 @@ class MyFrame(wx.Frame):
                 new_img.Replace(0,0,0,255,255,255) # convert to white
                 p.button_pic.img = new_img
                 p.button_pic.Refresh()
+                p.button_pic.img_path = None
                 p.text_expl.SetValue("")
+        elif id == 2:           # Save
+            import matplotlib.pyplot
+            import PIL.Image
+            f, (axes) = matplotlib.pyplot.subplots(2, 3)
+            f.set_size_inches(11.69, 8.27)
+            ax_list = axes.flatten()
+            for i, p in enumerate(self.panels):
+                img_path = p.button_pic.img_path
+                if img_path:
+                    ax_list[i].imshow(PIL.Image.open(img_path))
+                ax_list[i].set_title(p.text_expl.GetValue())
+                ax_list[i].tick_params(labelbottom='off', labelleft='off')
+                ax_list[i].get_xaxis().set_ticks_position('none')
+                ax_list[i].get_yaxis().set_ticks_position('none')
+            f.savefig("/tmp/aaaaa.pdf")
+            import subprocess
+            subprocess.Popen(["/tmp/aaaaa.pdf"], shell=True)
+
+            # dlg = wx.FileDialog(self, "Save to file", "", "", ".jpg",
+            #                     wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+            # if dlg.ShowModal() == wx.ID_OK:
+            #     print dlg.GetFilename()
+            #     print dlg.GetDirectory()
+            # dlg.Destroy()
+
+            # context = wx.ClientDC(self)
+            # memory = wx.MemoryDC()
+            # x, y = self.ClientSize
+            # bitmap = wx.EmptyBitmap( x, y, -1 )
+            # memory.SelectObject(bitmap)
+            # memory.Blit( 0, 0, x, y, context, 0, 0)
+            # memory.SelectObject( wx.NullBitmap)
+            # bitmap.SaveFile( '/tmp/test.jpg', wx.BITMAP_TYPE_JPEG )
+
+
+    def createHtml(self):
+        html = """
+        <!DOCTYPE html>
+        <html lang="ja">
+        <head>
+        <meta charset="UFT-8">
+        </head>
+        <body>
+        <table width="50%" height="60%"><tbody>
+        <tr>
+        <td>
+        <figure id="1">
+        <img src="/home/eisoku/Desktop/b.jpg" width="300">
+        <figcaption>test</figcaption>
+        </figure>
+        </td>
+        <td>
+        <figure id="1">
+        <img src="/home/eisoku/Desktop/b.jpg" width="300">
+        <figcaption>test</figcaption>
+        </figure>
+        </td>
+        <td>
+        <figure id="1">
+        <img src="/home/eisoku/Desktop/b.jpg" width="300">
+        <figcaption>test</figcaption>
+        </figure>
+        </td>
+        </tr>
+        <tr>
+        <td>
+        <figure id="1">
+        <img src="/home/eisoku/Desktop/b.jpg" width="300">
+        <figcaption>test</figcaption>
+        </figure>
+        </td>
+          <td>
+        <figure id="1">
+        <img src="/home/eisoku/Desktop/b.jpg" width="300">
+        <figcaption>test</figcaption>
+        </figure>
+        </td>
+        <td>
+        <figure id="1">
+        <img src="/home/eisoku/Desktop/b.jpg" width="300">
+              <figcaption>test</figcaption>
+        </figure>
+        </td>
+        </tr>
+        </tbody>
+        </table>
+        </body>
+        </html>
+        """
+        f = file('screenshot.htm', 'w')
+        f.write(html)
+        f.close()
 
 class ExplanationDrawingPanel(wx.Panel):
     """
@@ -139,6 +233,7 @@ class MyImage(wx.Window):
         default_img = wx.EmptyImage(400, 300) # black
         default_img.Replace(0,0,0,255,255,255) # convert to white
         self.img = default_img
+        self.img_path = None
         self.best_scale = default_img.GetSize().Get()
         self.Bind(wx.EVT_SIZE, self.onResize)
         self.Bind(wx.EVT_PAINT, self.onPaint)
