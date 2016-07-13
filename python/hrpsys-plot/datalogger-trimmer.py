@@ -6,14 +6,10 @@ parser = argparse.ArgumentParser(description='trim log to reduce file size and l
 parser.add_argument('-f', type=str, help='input file', metavar='file', required=True)
 parser.add_argument('--min', type=float, help='minimum time', default=0.0)
 parser.add_argument('--max', type=float, help='maximum time', default=None)
+parser.add_argument('--dt', type=float, help='one step time of log', default=0.002)
 args = parser.parse_args()
 
-with open(os.path.abspath(args.f), 'r') as f:
-    a = float(f.readline().split(' ')[0])
-    b = float(f.readline().split(' ')[0])
-    dt = round(b - a, 3)
-
-
+dt = args.dt
 fl = sum(1 for line in open(os.path.abspath(args.f)))
 duration = fl * dt
 start_point = int(args.min / duration * fl)
