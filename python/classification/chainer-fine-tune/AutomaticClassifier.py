@@ -53,9 +53,31 @@ class MyFrame(wx.Frame):
             dt = MyFileDropTarget(p)
             p.SetDropTarget(dt)
         root_panel.SetSizer(root_layout)
+
+        # about MultiProcess
         self.Bind(wx.EVT_SHOW, self.onShow)
         self.Bind(wx.EVT_IDLE, self.onIdle)
         self.Bind(wx.EVT_CLOSE, self.onClose)
+
+        # about Menu
+        menu_file = wx.Menu()
+        menu_file.Append(1, "Print")
+        menu_file.Append(2, "Save")
+        menu_setting = wx.Menu()
+        menu_setting.Append(3, "Reset")
+        candidate = wx.Menu()
+        candidate.Append(4, "2 x 3")
+        candidate.Append(5, "3 x 3")
+        menu_setting.AppendSubMenu(candidate, "Layout")
+        menu_help = wx.Menu()
+        menu_help.Append(6, "Usage")
+        menu_help.Append(7, "About")
+        menu_bar = wx.MenuBar()
+        menu_bar.Append(menu_file, "File")
+        menu_bar.Append(menu_setting, "Setting")
+        menu_bar.Append(menu_help, "Help")
+        self.Bind(wx.EVT_MENU, self.onMenu)
+        self.SetMenuBar(menu_bar)
 
     def setCNNmodel(self, path):
         model = pickle.load(open(path, "rb"))
@@ -85,6 +107,17 @@ class MyFrame(wx.Frame):
         [job.terminate() for job in self.jobs]
         self.Destroy()
 
+    def onMenu(self, event):
+        id = event.GetId()
+        if id == 3:             # Reset
+            for p in self.panels:
+                cur_img = p.button_pic.img
+                (w, h) = cur_img.GetSize().Get()
+                new_img = wx.EmptyImage(w, h)
+                new_img.Replace(0,0,0,255,255,255) # convert to white
+                p.button_pic.img = new_img
+                p.button_pic.Refresh()
+                p.text_expl.SetValue("")
 
 class ExplanationDrawingPanel(wx.Panel):
     """
