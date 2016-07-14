@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse, os, glob, subprocess, linecache
+import numpy as np
 
 parser = argparse.ArgumentParser(description='trim log to reduce file size and load time')
 parser.add_argument('-f', type=str, help='input file', metavar='file', required=True)
@@ -8,19 +9,14 @@ parser.add_argument('--min', type=float, help='minimum time', default=0.0)
 parser.add_argument('--max', type=float, help='maximum time', default=None)
 args = parser.parse_args()
 
-with open(os.path.abspath(args.f), 'r') as f:
-    a = float(f.readline().split(' ')[0])
-    b = float(f.readline().split(' ')[0])
-    dt = round(b - a, 3)
-
-
-fl = sum(1 for line in open(os.path.abspath(args.f)))
-duration = fl * dt
-start_point = int(args.min / duration * fl)
-end_point = int(args.max / duration * fl) if args.max else fl
+t_data_orig=np.loadtxt(args.f)[:,0]
+t_data=t_data_orig-t_data_orig[0]
+trimmed_index=np.where((t_data >= args.min) * (t_data <= args.max))[0]
+start_point = trimmed_index[0]
+end_point = trimmed_index[-1]
 root, ext = os.path.splitext(os.path.abspath(args.f))
 
-print duration, start_point, end_point, fl
+print("trim from line {} to line {}".format(str(start_point), str(end_point)))
 
 for log in glob.glob(os.path.splitext(os.path.abspath(args.f))[0]+'.*'):
     root, ext = os.path.splitext(log)
